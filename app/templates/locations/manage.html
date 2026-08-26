@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Locations{% endblock %}
+{% block heading %}📍 Locations{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+        <input id="locName" placeholder="Nama lokasi baru" style="flex:1;">
+        <button onclick="addLoc()">+ Tambah</button>
+    </div>
+    <div id="locList"></div>
+</div>
+
+<script>
+async function loadLocs() {
+    const res = await fetch('/api/locations');
+    const data = await res.json();
+    const list = document.getElementById('locList');
+    if (!data.success || data.data.length === 0) {
+        list.innerHTML = '<p style="color:#94a3b8;">Belum ada lokasi.</p>';
+        return;
+    }
+    list.innerHTML = data.data.map(l =>
+        `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #334155;">
+            <span>📍 ${l.name} ${l.room ? '— '+l.room : ''}</span>
+            <button onclick="deleteLoc(${l.id})" style="background:#dc2626;padding:0.25rem 0.5rem;font-size:0.8rem;">Hapus</button>
+        </div>`
+    ).join('');
+}
+
+async function addLoc() {
+    const name = document.getElementById('locName').value;
+    if (!name) return;
+    const params = new URLSearchParams();
+    params.append('name', name);
+    const res = await fetch('/api/locations', { method: 'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+    const data = await res.json();
+    if (data.success) {
+        document.getElementById('locName').value = '';
+        loadLocs();
+    }
+}
+
+async function deleteLoc(id) {
+    if (!confirm('Hapus lokasi ini?')) return;
+    await fetch(`/api/locations/${id}`, { method: 'DELETE' });
+    loadLocs();
+}
+
+loadLocs();
+</script>
+{% endblock %}

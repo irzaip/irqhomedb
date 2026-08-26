@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="number">{{ total_items }}</div>
+        <div class="label">Total Items</div>
+    </div>
+    <div class="stat-card {% if unidentified_items > 0 %}warning{% endif %}">
+        <div class="number">{{ unidentified_items }}</div>
+        <div class="label">⚠️ Unidentified</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ identified }}</div>
+        <div class="label">✅ Identified</div>
+    </div>
+    <div class="stat-card {% if low_stock > 0 %}danger{% endif %}">
+        <div class="number">{{ low_stock }}</div>
+        <div class="label">⚠️ Low Stock</div>
+    </div>
+</div>
+
+<script>
+// Hitung identified dari total-items - unidentified
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.stat-card .number');
+    if (cards.length >= 3) {
+        const total = parseInt(cards[0].textContent);
+        const unid = parseInt(cards[1].textContent);
+        if (!isNaN(total) && !isNaN(unid)) {
+            cards[2].textContent = total - unid;
+        }
+    }
+});
+</script>
+
+<div class="card" style="margin-top:1rem;">
+    <h2 style="margin-bottom:1rem;">Quick Start</h2>
+    <ol style="color:#94a3b8;line-height:2;">
+        <li>📸 <strong>Upload foto</strong> dari HP → <a href="/upload">Upload</a> (1 foto = 1 item)</li>
+        <li>🏷️ <strong>Identify Items</strong> — kasih nama, lokasi, kategori → <a href="/items/identify">Identify</a></li>
+        <li>🔍 <strong>Cari barang</strong> langsung dari sidebar Items</li>
+    </ol>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Tambah Item{% endblock %}
+{% block heading %}📸 Tambah Item ke Box{% endblock %}
+{% block content %}
+<style>
+.add-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.add-photo {
+    display: flex;
+    flex-direction: column;
+}
+.add-photo .box-photo {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+.add-info {
+    padding: 1rem;
+    background: #334155;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+.add-info .label { font-size: 0.8rem; color: #94a3b8; }
+.add-info .value { font-size: 1rem; font-weight: 600; }
+@media (max-width: 768px) {
+    .add-container { grid-template-columns: 1fr; }
+    .add-photo .box-photo { aspect-ratio: auto; max-height: 200px; }
+}
+</style>
+<div class="card">
+    <div class="add-container">
+        <!-- Left: Box preview -->
+        <div class="add-photo">
+            <img class="box-photo" src="{% if box.photos %}/uploads/boxes/{{ box.id }}/{{ box.photos[0].filename }}{% else %}data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect fill='%230f172a' width='200' height='200'/><text x='100' y='100' text-anchor='middle' fill='%23475569' font-size='40'>📦</text></svg>{% endif %}">
+            <div class="add-info">
+                <div class="label">Box</div>
+                <div class="value">{{ box.name or '❓' }}</div>
+                {% if box.location %}<div style="color:#94a3b8;font-size:0.85rem;margin-top:0.3rem;">📍 {{ box.location.name }}</div>{% endif %}
+            </div>
+        </div>
+
+        <!-- Right: Upload -->
+        <div>
+            <p style="color:#94a3b8;margin-bottom:1rem;">Ambil foto item yang ingin dimasukkan ke box ini. <strong>1 foto = 1 item</strong>.</p>
+
+            <div style="border:2px dashed #334155;border-radius:12px;padding:1.5rem;text-align:center;margin-bottom:1rem;">
+                <p style="font-weight:600;margin-bottom:0.75rem;font-size:1.1rem;">📷 Kamera</p>
+                <input type="file" accept="image/*" capture="environment" id="camInput" style="padding:0.5rem;">
+            </div>
+
+            <div style="border:2px dashed #334155;border-radius:12px;padding:1.5rem;text-align:center;">
+                <p style="font-weight:600;margin-bottom:0.75rem;font-size:1.1rem;">📁 Galeri (pilih banyak)</p>
+                <input type="file" accept="image/*" multiple id="galInput" style="padding:0.5rem;">
+            </div>
+
+            <div id="upStatus" style="display:none;margin-top:1rem;">
+                <div style="background:#334155;border-radius:8px;height:12px;overflow:hidden;margin-bottom:0.5rem;">
+                    <div id="upBar" style="background:#2563eb;height:100%;width:0%;transition:width 0.3s;"></div>
+                </div>
+                <p id="upText" style="color:#94a3b8;font-size:0.9rem;"></p>
+            </div>
+
+            <div id="upResult" style="margin-top:1rem;display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+var boxId = '{{ box.id }}';
+
+document.getElementById('camInput').onchange = async function(e){
+    var f = e.target.files[0];
+    if(f){ await uploadFiles([f]); this.value=''; }
+};
+document.getElementById('galInput').onchange = async function(e){
+    var fs = Array.from(e.target.files);
+    if(fs.length){ await uploadFiles(fs); this.value=''; }
+};
+
+async function uploadFiles(files){
+    var s=document.getElementById('upStatus'), bar=document.getElementById('upBar'), txt=document.getElementById('upText'), res=document.getElementById('upResult');
+    s.style.display='block'; res.style.display='none'; bar.style.width='10%'; txt.textContent='0/'+files.length;
+    var done=0;
+    for(var f of files){
+        var fd=new FormData(); fd.append('files',f); fd.append('box_id', boxId);
+        try{ var r=await fetch('/api/upload',{method:'POST',body:fd}); var d=await r.json(); if(d.success) done++; }catch(e){}
+        bar.style.width=Math.min(100,(done/files.length)*100)+'%'; txt.textContent=done+'/'+files.length;
+    }
+    bar.style.width='100%'; txt.textContent='✅ '+done+' item terupload';
+    res.innerHTML='<div style="background:#065f46;border:1px solid #059669;border-radius:8px;padding:1.2rem;font-size:1rem;line-height:1.8;">✅ <strong>'+done+' item</strong> ditambahkan ke 📦 <strong>{{ box.name or 'Box' }}</strong><br><br><a href="/boxes/{{ box.id }}" class="btn" style="padding:0.75rem 1.5rem;">↩ Kembali</a> <a href="/items/identify" class="btn" style="padding:0.75rem 1.5rem;">🏷️ Identify</a></div>';
+    res.style.display='block';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Box Detail{% endblock %}
+{% block heading %}{{ box.name or '❓ Box' }}{% endblock %}
+{% block content %}
+<style>
+.detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.detail-photo {
+    display: flex;
+    flex-direction: column;
+}
+.detail-photo .photo-main {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+.detail-info .field { margin-bottom: 0.75rem; }
+.detail-info .field label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 0.15rem;
+}
+.detail-info .field .value { font-size: 1rem; }
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+.items-grid .item-card {
+    background: #334155;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: border 0.2s;
+}
+.items-grid .item-card:hover { border-color: #2563eb; }
+.items-grid .item-card .thumb {
+    height: 100px;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+    font-size: 1.5rem;
+}
+.items-grid .item-card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.items-grid .item-card .info { padding: 0.5rem; }
+.items-grid .item-card .info .name { font-weight: 600; font-size: 0.85rem; }
+.items-grid .item-card .info .meta { font-size: 0.75rem; color: #94a3b8; }
+@media (max-width: 768px) {
+    .detail-layout { grid-template-columns: 1fr; }
+    .detail-photo .photo-main { aspect-ratio: auto; max-height: 300px; }
+}
+/* Zoom modal */
+#zoomModal {
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.9);z-index:9999;cursor:pointer;
+}
+#zoomModal img {
+    max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;
+}
+</style>
+<div class="card">
+    <div class="detail-layout">
+        <!-- Left: Photo -->
+        <div class="detail-photo">
+            <img id="mainPhoto" class="photo-main"
+                 src="{% if box.photos %}/uploads/boxes/{{ box.id }}/{{ box.photos[0].filename }}{% endif %}"
+                 onclick="zoomPhoto(this.src)"
+                 {% if not box.photos %}style="display:none"{% endif %}>
+            {% if not box.photos %}
+            <p style="color:#94a3b8;text-align:center;padding:2rem;">Belum ada foto box.</p>
+            {% endif %}
+            {% if box.photos|length > 1 %}
+            <div class="photo-strip" id="photoStrip" style="margin-bottom:0;">
+                {% for p in box.photos %}
+                <img src="/uploads/boxes/{{ box.id }}/{{ p.filename }}"
+                     class="{% if loop.first %}active{% endif %}"
+                     onclick="showPhoto(this)">
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Data -->
+        <div class="detail-info">
+            <div class="field"><label>Nama</label><div class="value">{{ box.name or '—' }}</div></div>
+            <div class="field"><label>Status</label><div class="value">
+                {% if box.status=='unidentified' %}<span style="color:#f59e0b;">⚠️ Belum Diidentifikasi</span>
+                {% else %}<span style="color:#22c55e;">✅ {{ box.status }}</span>{% endif %}
+            </div></div>
+            <div class="field"><label>Lokasi</label><div class="value">{{ box.location.name if box.location else '—' }}</div></div>
+            <div class="field"><label>Deskripsi</label><div class="value">{{ box.description or '—' }}</div></div>
+
+            <!-- Item count -->
+            <div class="field" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #334155;">
+                <label>Item di Box Ini</label>
+                <div class="value" style="font-size:1.5rem;font-weight:700;">{{ box.items|length }}</div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:0.5rem;margin-top:1.5rem;flex-wrap:wrap;">
+                <a href="/boxes/{{ box.id }}/add-items" class="btn" style="flex:1;text-align:center;padding:0.75rem;">📸 Tambah Item</a>
+                <a href="/boxes/{{ box.id }}/edit" class="btn" style="background:#7c3aed;padding:0.75rem;">✏️ Edit Box</a>
+                <button onclick="deleteBox()" style="background:#dc2626;padding:0.75rem;">🗑️ Hapus</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Items list -->
+{% if box.items %}
+<h3 style="margin:1.5rem 0 0.75rem;">Isi Box ({{ box.items|length }})</h3>
+<div class="items-grid">
+    {% for item in box.items %}
+    <div class="item-card" onclick="location.href='/items/{{ item.id }}'">
+        <div class="thumb">{% if item.photos %}<img src="/uploads/items/{{ item.id }}/{{ item.photos[0].filename }}">{% else %}📦{% endif %}</div>
+        <div class="info">
+            <div class="name">{{ item.name or '❓' }}</div>
+            <div class="meta">{{ item.quantity }} {{ item.unit }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p style="color:#94a3b8;margin-top:1rem;">Box ini kosong. <a href="/boxes/{{ box.id }}/add-items" style="color:#60a5fa;">Tambah item sekarang</a>.</p>
+{% endif %}
+
+<!-- Zoom Modal -->
+<div id="zoomModal" onclick="this.style.display='none'">
+    <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:1rem;">
+        <img id="zoomImg" src="">
+    </div>
+</div>
+
+<script>
+function showPhoto(el){
+    document.querySelectorAll('.photo-strip img').forEach(i=>i.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('mainPhoto').src=el.src;
+    document.getElementById('mainPhoto').style.display='block';
+}
+function zoomPhoto(src){
+    document.getElementById('zoomImg').src=src;
+    document.getElementById('zoomModal').style.display='block';
+}
+async function deleteBox(){
+    if(!confirm('Hapus box {{ box.name or "ini" }}?')) return;
+    var r=await fetch('/api/boxes/{{ box.id }}',{method:'DELETE'});
+    var d=await r.json();
+    if(d.success) window.location.href='/boxes';
+    else alert(d.detail||'Gagal');
+}
+</script>
+{% endblock %}

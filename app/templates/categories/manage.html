@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Categories{% endblock %}
+{% block heading %}🏷️ Categories{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+        <input id="catName" placeholder="Nama kategori baru" style="flex:1;">
+        <button onclick="addCat()">+ Tambah</button>
+    </div>
+    <div id="catList"></div>
+</div>
+
+<script>
+async function loadCats() {
+    const res = await fetch('/api/categories');
+    const data = await res.json();
+    const list = document.getElementById('catList');
+    if (!data.success || data.data.length === 0) {
+        list.innerHTML = '<p style="color:#94a3b8;">Belum ada kategori.</p>';
+        return;
+    }
+    list.innerHTML = data.data.map(c =>
+        `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #334155;">
+            <span>${c.icon || '📂'} ${c.name}</span>
+            <button onclick="deleteCat(${c.id})" style="background:#dc2626;padding:0.25rem 0.5rem;font-size:0.8rem;">Hapus</button>
+        </div>`
+    ).join('');
+}
+
+async function addCat() {
+    const name = document.getElementById('catName').value;
+    if (!name) return;
+    const params = new URLSearchParams();
+    params.append('name', name);
+    const res = await fetch('/api/categories', { method: 'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+    const data = await res.json();
+    if (data.success) {
+        document.getElementById('catName').value = '';
+        loadCats();
+    }
+}
+
+async function deleteCat(id) {
+    if (!confirm('Hapus kategori ini?')) return;
+    await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    loadCats();
+}
+
+loadCats();
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Edit Item{% endblock %}
+{% block heading %}✏️ Edit: {{ item.name or '❓' }}{% endblock %}
+{% block content %}
+<style>
+.edit-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.edit-photo {
+    display: flex;
+    flex-direction: column;
+}
+.edit-photo .photo-main {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+@media (max-width: 768px) {
+    .edit-layout { grid-template-columns: 1fr; }
+    .edit-photo .photo-main { aspect-ratio: auto; max-height: 300px; }
+}
+</style>
+<div class="card">
+    <div class="edit-layout">
+        <!-- Left: Photo -->
+        <div class="edit-photo">
+            <div id="ps" class="photo-strip" style="margin-bottom:0;">
+                {% for p in item.photos %}
+                <img src="/uploads/items/{{ item.id }}/{{ p.filename }}" class="{% if loop.first %}active{% endif %}" onclick="clickPhoto(this)">
+                {% endfor %}
+            </div>
+            <img id="mainPhoto" class="photo-main" src="{% if item.photos %}/uploads/items/{{ item.id }}/{{ item.photos[0].filename }}{% endif %}">
+            {% if not item.photos %}
+            <p style="color:#94a3b8;text-align:center;padding:2rem;">Belum ada foto.</p>
+            {% endif %}
+        </div>
+
+        <!-- Right: Form -->
+        <div>
+            <form id="editForm" onsubmit="return saveEdit(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                    <div style="grid-column:1/-1;"><label>Nama</label></div>
+                    <div style="grid-column:1/-1;"><input id="name" value="{{ item.name or '' }}" required style="width:100%;"></div>
+
+                    <div><label>Jumlah</label><input id="qty" type="number" value="{{ item.quantity }}" min="1" style="width:100%;"></div>
+                    <div><label>Satuan</label><input id="unit" value="{{ item.unit }}" style="width:100%;"></div>
+
+                    <div style="grid-column:1/-1;"><label>Box</label></div>
+                    <div style="grid-column:1/-1;">
+                        <select id="boxSel" style="width:100%;">
+                            <option value="">— Tidak ada box —</option>
+                            {% for b in boxes %}
+                            <option value="{{ b.id }}" {% if item.box_id == b.id %}selected{% endif %}>{{ b.name or '❓' }} — {{ b.location.name if b.location else '' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="grid-column:1/-1;"><label>Kategori</label></div>
+                    <div style="grid-column:1/-1;">
+                        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                            {% for c in categories %}
+                            <label style="display:flex;align-items:center;gap:0.3rem;background:#334155;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.85rem;cursor:pointer;">
+                                <input type="checkbox" class="cat-cb" value="{{ c.id }}" {% if c.id in item_cat_ids %}checked{% endif %}> {{ c.name }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div style="grid-column:1/-1;"><label>Deskripsi</label></div>
+                    <div style="grid-column:1/-1;"><input id="desc" value="{{ item.description or '' }}" style="width:100%;"></div>
+
+                    <div style="grid-column:1/-1;"><label>Notes</label></div>
+                    <div style="grid-column:1/-1;"><input id="notes" value="{{ item.notes or '' }}" style="width:100%;"></div>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;margin-top:1.5rem;">
+                    <button type="submit" style="flex:1;padding:0.85rem;font-size:1rem;">💾 Simpan</button>
+                    <a href="/items/{{ item.id }}" class="btn" style="background:#475569;padding:0.85rem;font-size:1rem;text-align:center;">↩ Batal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function clickPhoto(el){
+    document.querySelectorAll('#ps img').forEach(function(i){i.classList.remove('active');});
+    el.classList.add('active');
+    document.getElementById('mainPhoto').src=el.src;
+}
+
+function saveEdit(e){
+    e.preventDefault();
+    var catIds=[];
+    document.querySelectorAll('.cat-cb:checked').forEach(function(c){catIds.push(c.value);});
+
+    var body='name='+encodeURIComponent(document.getElementById('name').value)
+        +'&box_id='+encodeURIComponent(document.getElementById('boxSel').value)
+        +'&quantity='+encodeURIComponent(parseInt(document.getElementById('qty').value)||1)
+        +'&unit='+encodeURIComponent(document.getElementById('unit').value||'pcs')
+        +'&description='+encodeURIComponent(document.getElementById('desc').value||'')
+        +'&notes='+encodeURIComponent(document.getElementById('notes').value||'')
+        +'&category_ids='+encodeURIComponent(catIds.join(','));
+
+    var btn=e.target.querySelector('button[type="submit"]');
+    btn.disabled=true;btn.textContent='⏳...';
+
+    fetch('/api/items/{{ item.id }}/edit',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:body
+    }).then(function(r){return r.json();})
+    .then(function(d){
+        if(d.success){window.location.href='/items/{{ item.id }}';}
+        else{alert(d.detail||'Gagal');btn.disabled=false;btn.textContent='💾 Simpan';}
+    }).catch(function(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='💾 Simpan';});
+    return false;
+}
+</script>
+{% endblock %}

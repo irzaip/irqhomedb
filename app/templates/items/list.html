@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Items{% endblock %}
+{% block heading %}📦 Items{% endblock %}
+{% block content %}
+<div style="margin-bottom:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <input type="text" id="search" placeholder="🔍 Cari nama, deskripsi, notes..." style="flex:1;min-width:150px;" onkeydown="if(event.key==='Enter')searchItems()">
+    <button onclick="searchItems()">Cari</button>
+    <select id="statusFilter" onchange="searchItems()">
+        <option value="">Semua</option>
+        <option value="identified">Identified</option>
+        <option value="unidentified">Unidentified</option>
+    </select>
+    <select id="boxFilter" onchange="searchItems()">
+        <option value="">Semua Box</option>
+    </select>
+    <select id="catFilter" onchange="searchItems()">
+        <option value="">Semua Kategori</option>
+    </select>
+    <select id="locFilter" onchange="searchItems()">
+        <option value="">Semua Lokasi</option>
+    </select>
+</div>
+<div id="itemGrid" class="grid-list"></div>
+<div id="loading" style="text-align:center;color:#94a3b8;padding:2rem;">Loading...</div>
+
+<script>
+async function loadFilters() {
+    // Load locations
+    var locRes = await fetch('/api/locations');
+    var locData = await locRes.json();
+    var locSel = document.getElementById('locFilter');
+    if (locData.success) {
+        locData.data.forEach(function(l) {
+            var opt = document.createElement('option');
+            opt.value = l.id;
+            opt.textContent = l.name;
+            locSel.appendChild(opt);
+        });
+    }
+    // Load boxes
+    var boxRes = await fetch('/api/boxes?limit=200');
+    var boxData = await boxRes.json();
+    var boxSel = document.getElementById('boxFilter');
+    if (boxData.success) {
+        boxData.data.forEach(function(b) {
+            var opt = document.createElement('option');
+            opt.value = b.id;
+            opt.textContent = (b.name || '❓') + (b.location ? ' — ' + b.location.name : '');
+            boxSel.appendChild(opt);
+        });
+    }
+    // Load categories
+    var catRes = await fetch('/api/categories');
+    var catData = await catRes.json();
+    var catSel = document.getElementById('catFilter');
+    if (catData.success) {
+        catData.data.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            catSel.appendChild(opt);
+        });
+    }
+}
+
+async function searchItems() {
+    var q = document.getElementById('search').value;
+    var s = document.getElementById('statusFilter').value;
+    var box = document.getElementById('boxFilter').value;
+    var cat = document.getElementById('catFilter').value;
+    var loc = document.getElementById('locFilter').value;
+    var grid = document.getElementById('itemGrid');
+    document.getElementById('loading').style.display = 'block';
+
+    var url = '/api/items?limit=100&search=' + encodeURIComponent(q);
+    if (s) url += '&status=' + s;
+    if (box) url += '&box_id=' + box;
+    if (cat) url += '&category_id=' + cat;
+    if (loc) url += '&location_id=' + loc;
+
+    var res = await fetch(url);
+    var data = await res.json();
+    document.getElementById('loading').style.display = 'none';
+
+    if (!data.success || data.data.length === 0) {
+        grid.innerHTML = '<p style="color:#94a3b8;grid-column:1/-1;">Belum ada item.</p>';
+        return;
+    }
+
+    grid.innerHTML = data.data.map(function(item) {
+            var name = item.name || '❓ Belum Diidentifikasi';
+            var photo = item.photos && item.photos[0];
+            var imgHtml = photo ? '<img src="/uploads/items/' + item.id + '/' + photo.filename + '" alt="">' : '📦';
+            var boxName = item.box ? (item.box.name || '—') : '—';
+            var locName = (item.box && item.box.location) ? item.box.location.name : '—';
+            var link = '/items/' + item.id;
+            return '<div class="item-card" style="position:relative;">'
+                + '<div class="thumb" onclick="location.href=\'' + link + '\'" style="cursor:pointer;">' + imgHtml + '</div>'
+                + '<div class="info">'
+                + '<div class="name" onclick="location.href=\'' + link + '\'" style="cursor:pointer;">' + name + '</div>'
+                + '<div class="meta">' + item.quantity + ' ' + item.unit + '</div>'
+                + '<div class="meta">📦 ' + boxName + '</div>'
+                + '<div class="meta">📍 ' + locName + '</div>'
+                + '<div style="display:flex;gap:0.3rem;margin-top:0.3rem;align-items:center;">'
+                + '<a href="' + link + '/edit" style="font-size:0.75rem;color:#60a5fa;">✏️ Edit</a>'
+                + '<button onclick="event.stopPropagation();deleteItem(\'' + item.id + '\',\'' + (item.name||'').replace(/'/g,"\\'") + '\')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;padding:0;">🗑️</button>'
+                + '</div></div></div>';
+        }).join('');
+}
+
+loadFilters();
+searchItems();
+
+async function deleteItem(id, name) {
+    if (!confirm('🗑️ Hapus item \"' + name + '\"?')) return;
+    var res = await fetch('/api/items/' + id, { method: 'DELETE' });
+    var data = await res.json();
+    if (data.success) searchItems();
+    else alert(data.detail || 'Gagal');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Boxes{% endblock %}
+{% block heading %}📦 Boxes{% endblock %}
+{% block content %}
+<div style="margin-bottom:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <input type="text" id="search" placeholder="🔍 Cari box..." style="flex:1;min-width:150px;">
+    <button onclick="loadBoxes()">Cari</button>
+    <select id="statusFilter" onchange="loadBoxes()">
+        <option value="">Semua</option>
+        <option value="identified">Identified</option>
+        <option value="unidentified">Unidentified</option>
+    </select>
+    <select id="locFilter" onchange="loadBoxes()">
+        <option value="">Semua Lokasi</option>
+    </select>
+</div>
+<div id="boxGrid" class="grid-list"></div>
+<div id="loading" style="text-align:center;color:#94a3b8;padding:2rem;">Loading...</div>
+
+<script>
+fetch('/api/locations').then(r=>r.json()).then(d=>{
+    if(d.success) d.data.forEach(l=>document.getElementById('locFilter').innerHTML+=`<option value="${l.id}">${l.name}</option>`);
+});
+async function loadBoxes(){
+    const q=document.getElementById('search').value,s=document.getElementById('statusFilter').value,loc=document.getElementById('locFilter').value;
+    const grid=document.getElementById('boxGrid');document.getElementById('loading').style.display='block';
+    let url=`/api/boxes?limit=100&search=${encodeURIComponent(q)}`;
+    if(s)url+=`&status=${s}`;if(loc)url+=`&location_id=${loc}`;
+    const res=await fetch(url);const d=await res.json();document.getElementById('loading').style.display='none';
+    if(!d.success||d.data.length===0){grid.innerHTML='<p style="color:#94a3b8;grid-column:1/-1;">Belum ada box.</p>';return;}
+    grid.innerHTML=d.data.map(b=>{
+        const n=b.name||'<em style="color:#f59e0b;">❓ Unidentified</em>';
+        const p=b.photos&&b.photos[0];const img=p?`<img src="/uploads/boxes/${b.id}/${p.filename}">`:'📦';
+        const l=b.location?b.location.name:'';
+        const cnt=b.items?b.items.length:0;
+        return `<div class="item-card" onclick="location.href='/boxes/${b.id}'" style="cursor:pointer;"><div class="thumb">${img}</div><div class="info"><div class="name">${b.name||'❓ Box'}</div><div class="meta">📍 ${l}</div><div class="meta">${cnt} item(s)</div></div></div>`;
+    }).join('');
+}
+loadBoxes();
+</script>
+{% endblock %}

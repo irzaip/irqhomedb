@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Identify Boxes{% endblock %}
+{% block heading %}🏷️ Identify Boxes{% endblock %}
+{% block content %}
+<div id="identifyArea" class="card"><p style="color:#94a3b8;">Loading...</p></div>
+<script>
+let boxes=[],idx=0;
+async function load(){const r=await fetch('/api/boxes/unidentified/all');const d=await r.json();boxes=d.data||[];
+if(!boxes.length){document.getElementById('identifyArea').innerHTML='<p style="color:#94a3b8;">✅ Semua box sudah diidentifikasi! <a href="/" class="btn">🏠 Kembali</a></p>';return;}
+show();}
+async function show(){
+const area=document.getElementById('identifyArea');const box=boxes[idx];if(!box){area.innerHTML='<p style="color:#94a3b8;">✅ Selesai!</p>';return;}
+const lr=await fetch('/api/locations');const ld=await lr.json();
+const locs=(ld.data||[]).map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+const ph=(box.photos||[]).map((p,i)=>`<img src="/uploads/boxes/${box.id}/${p.filename}" class="${i===0?'active':''}">`).join('');
+area.innerHTML=`
+<p>Box ${idx+1}/${boxes.length}</p>
+<div class="photo-strip" id="ps">${ph||'<p style="color:#94a3b8;">Tidak ada foto</p>'}</div>
+<img id="mainPhoto" class="photo-main" src="${(box.photos||[])[0]?'/uploads/boxes/'+box.id+'/'+box.photos[0].filename:''}" style="${(box.photos||[]).length===0?'display:none':''}">
+<form onsubmit="return save(event)">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+<div><label>Nama Box</label><input id="bn" value="${box.name||''}" placeholder="Koper Alat" required></div>
+<div><label>Lokasi</label><select id="bl"><option value="">— Pilih —</option>${locs}</select></div>
+<div style="grid-column:1/-1;"><label>Deskripsi</label><input id="bd" value="${box.description||''}"></div>
+</div>
+<div style="display:flex;gap:0.5rem;margin-top:1rem;"><button type="submit" style="flex:1;padding:0.75rem;">✅ Simpan & Next</button><button type="button" onclick="skip()" style="background:#475569;padding:0.75rem;">⏭️</button></div>
+</form>`;
+document.getElementById('ps').onclick=function(e){if(e.target.tagName==='IMG'){document.querySelectorAll('#ps img').forEach(i=>i.classList.remove('active'));e.target.classList.add('active');document.getElementById('mainPhoto').src=e.target.src;}};
+}
+async function save(e){e.preventDefault();const box=boxes[idx];const p=new URLSearchParams();
+p.append('name',document.getElementById('bn').value);p.append('location_id',parseInt(document.getElementById('bl').value)||0);p.append('description',document.getElementById('bd').value||'');
+const r=await fetch(`/api/boxes/${box.id}/identify`,{method:'POST',body:p});const d=await r.json();
+if(d.success){idx++;show();}else alert(d.detail||'Gagal');return false;}
+function skip(){idx++;show();}
+load();
+</script>
+{% endblock %}

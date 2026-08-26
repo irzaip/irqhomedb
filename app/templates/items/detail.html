@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name or 'Item Detail' }}{% endblock %}
+{% block heading %}{{ item.name or '❓ Unidentified' }}{% endblock %}
+{% block content %}
+<style>
+.detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.detail-photo {
+    display: flex;
+    flex-direction: column;
+}
+.detail-photo .photo-main {
+    width: 100%;
+    max-height: none;
+    aspect-ratio: 3/4;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+.detail-info .field {
+    margin-bottom: 0.75rem;
+}
+.detail-info .field label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 0.15rem;
+}
+.detail-info .field .value {
+    font-size: 1rem;
+}
+@media (max-width: 768px) {
+    .detail-layout { grid-template-columns: 1fr; }
+    .detail-photo .photo-main { max-height: 300px; aspect-ratio: auto; }
+}
+</style>
+<div class="card">
+    <div class="detail-layout">
+        <!-- Left: Photo -->
+        <div class="detail-photo">
+            <img id="mainPhoto" class="photo-main"
+                 src="{% if item.photos %}/uploads/items/{{ item.id }}/{{ item.photos[0].filename }}{% endif %}"
+                 onclick="zoomPhoto(this.src)"
+                 {% if not item.photos %}style="display:none"{% endif %}>
+            {% if not item.photos %}
+            <p style="color:#94a3b8;text-align:center;padding:2rem;">Belum ada foto.</p>
+            {% endif %}
+            {% if item.photos|length > 1 %}
+            <div class="photo-strip" id="photoStrip" style="margin-bottom:0;">
+                {% for p in item.photos %}
+                <img src="/uploads/items/{{ item.id }}/{{ p.filename }}"
+                     class="{% if loop.first %}active{% endif %}"
+                     onclick="showPhoto(this)">
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Info -->
+        <div class="detail-info">
+            <div class="field"><label>Nama</label><div class="value">{{ item.name or '—' }}</div></div>
+            <div class="field"><label>Status</label><div class="value">
+                {% if item.status == 'unidentified' %}
+                <span style="color:#f59e0b;">⚠️ Belum Diidentifikasi</span>
+                {% else %}
+                <span style="color:#22c55e;">✅ {{ item.status }}</span>
+                {% endif %}
+            </div></div>
+            <div class="field"><label>Jumlah</label><div class="value">{{ item.quantity }} {{ item.unit }}</div></div>
+            <div class="field"><label>Box</label><div class="value">
+                {% if item.box %}
+                <a href="/boxes/{{ item.box.id }}" style="color:#60a5fa;">{{ item.box.name or '❓' }}</a>
+                {% else %}—{% endif %}
+            </div></div>
+            <div class="field"><label>Lokasi</label><div class="value">
+                {% if item.box and item.box.location %}
+                <a href="/locations/{{ item.box.location.id }}" style="color:#60a5fa;">{{ item.box.location.name }}</a>
+                {% else %}—{% endif %}
+            </div></div>
+            <div class="field"><label>Kategori</label><div class="value">
+                {% for c in item.categories %}<span style="background:#334155;padding:2px 8px;border-radius:4px;margin:2px;display:inline-block;">{{ c.name }}</span>{% else %}—{% endfor %}
+            </div></div>
+            <div class="field"><label>Deskripsi</label><div class="value">{{ item.description or '—' }}</div></div>
+            <div class="field"><label>Notes</label><div class="value">{{ item.notes or '—' }}</div></div>
+            <div class="field" style="color:#475569;font-size:0.8rem;">Dibuat: {{ item.created_at }} · 👤 {{ item.creator.display_name if item.creator else '—' }}</div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:0.5rem;margin-top:1.5rem;flex-wrap:wrap;">
+                {% if item.status == 'unidentified' %}
+                <a href="/items/identify" class="btn">🏷️ Identify</a>
+                {% endif %}
+                <a href="/items/{{ item.id }}/edit" class="btn" style="background:#7c3aed;">✏️ Edit</a>
+                <a href="/items/{{ item.id }}/photos/add" class="btn" style="background:#2563eb;">📸 Tambah Foto</a>
+                <button onclick="deleteItem()" style="background:#dc2626;">🗑️ Hapus</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Zoom Modal -->
+<div id="zoomModal" onclick="this.style.display='none'" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;cursor:pointer;">
+    <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:1rem;">
+        <img id="zoomImg" src="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">
+    </div>
+</div>
+
+<script>
+function showPhoto(el) {
+    document.querySelectorAll('.photo-strip img').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('mainPhoto').src = el.src;
+    document.getElementById('mainPhoto').style.display = 'block';
+}
+
+function zoomPhoto(src) {
+    document.getElementById('zoomImg').src = src;
+    document.getElementById('zoomModal').style.display = 'block';
+}
+
+async function deleteItem() {
+    if (!confirm('Hapus item {{ item.name or "ini" }}?')) return;
+    const res = await fetch('/api/items/{{ item.id }}', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) window.location.href = '/items';
+    else alert(data.detail || 'Gagal');
+}
+</script>
+{% endblock %}

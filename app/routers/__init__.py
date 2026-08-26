@@ -1,0 +1,7 @@
+from app.routers.auth import router as auth_router
+from app.routers.items import router as items_router
+from app.routers.boxes import router as boxes_router
+from app.routers.categories import router as categories_router
+from app.routers.locations import router as locations_router
+from app.routers.photos import router as photos_router
+from app.routers.export import router as export_router

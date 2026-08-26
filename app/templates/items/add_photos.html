@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Tambah Foto{% endblock %}
+{% block heading %}📸 Tambah Foto ke Item{% endblock %}
+{% block content %}
+<div class="card">
+    <p style="margin-bottom:1rem;">
+        <strong>Item:</strong> {{ item.name or '❓ Unidentified' }}
+        <a href="/items/{{ item.id }}" style="color:#60a5fa;margin-left:0.5rem;">← Kembali</a>
+    </p>
+
+    <p style="color:#94a3b8;margin-bottom:1rem;">
+        Pilih foto tambahan untuk item ini. Foto akan ditambahkan ke galeri item
+        tanpa membuat item baru.
+    </p>
+
+    <form id="addPhotoForm" enctype="multipart/form-data">
+        <div style="border:2px dashed #334155;border-radius:8px;padding:2rem;text-align:center;margin-bottom:1rem;">
+            <div style="font-size:3rem;margin-bottom:0.5rem;">📸</div>
+            <p>Pilih foto tambahan</p>
+            <input type="file" name="files" multiple accept="image/*" style="margin-top:0.5rem;">
+        </div>
+        <button type="submit">📸 Tambah Foto</button>
+    </form>
+
+    <div id="result" style="margin-top:1rem;display:none;"></div>
+
+    <!-- Existing photos -->
+    {% if item.photos %}
+    <h3 style="margin:1rem 0 0.5rem;">Foto yang sudah ada ({{ item.photos|length }})</h3>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        {% for p in item.photos %}
+        <div style="position:relative;">
+            <img src="/uploads/items/{{ item.id }}/{{ p.filename }}"
+                 style="width:80px;height:80px;object-fit:cover;border-radius:4px;">
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.getElementById('addPhotoForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const result = document.getElementById('result');
+    result.style.display = 'none';
+
+    const res = await fetch('/api/items/{{ item.id }}/photos', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.success) {
+        result.innerHTML = `<div class="card" style="background:#065f46;border-color:#059669;">✅ ${data.data.length} foto ditambahkan! <a href="/items/{{ item.id }}" style="color:white;">← Kembali</a></div>`;
+        result.style.display = 'block';
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        result.innerHTML = `<div class="card" style="background:#7f1d1d;border-color:#ef4444;">❌ ${data.detail || 'Gagal'}</div>`;
+        result.style.display = 'block';
+    }
+};
+</script>
+{% endblock %}

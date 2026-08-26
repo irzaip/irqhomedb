@@ -1,0 +1,8 @@
+*.pyc
+__pycache__/
+data/*.db
+uploads/items/*
+uploads/boxes/*
+!uploads/items/.gitkeep
+!uploads/boxes/.gitkeep
+.env

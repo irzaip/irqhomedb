@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Identify Items{% endblock %}
+{% block heading %}🏷️ Identify Items{% endblock %}
+{% block content %}
+<style>
+.identify-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.identify-photo {
+    display: flex;
+    flex-direction: column;
+}
+.identify-photo .photo-main {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+.identify-info .field { margin-bottom: 0.75rem; }
+.identify-info .field label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 0.15rem;
+}
+.identify-info .field .value { font-size: 1rem; }
+.identify-info .box-notice {
+    padding: 0.75rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.identify-info .box-notice.warning { border-color: #f59e0b; }
+@media (max-width: 768px) {
+    .identify-layout { grid-template-columns: 1fr; }
+    .identify-photo .photo-main { aspect-ratio: auto; max-height: 300px; }
+}
+</style>
+<div id="identifyArea" class="card">
+    <p style="color:#94a3b8;">Loading...</p>
+</div>
+
+<script>
+var items = [];
+var idx = 0;
+
+function loadItems() {
+    fetch('/api/items/unidentified/all')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            items = d.data || [];
+            if (items.length === 0) {
+                document.getElementById('identifyArea').innerHTML = '<p style="color:#94a3b8;">✅ Semua selesai! <a href="/" class="btn">🏠</a></p>';
+            } else {
+                showItem();
+            }
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function showItem() {
+    var item = items[idx];
+    if (!item) {
+        document.getElementById('identifyArea').innerHTML = '<p style="color:#94a3b8;">✅ Selesai!</p>';
+        return;
+    }
+
+    fetch('/api/categories').then(function(r) { return r.json(); }).then(function(cd) {
+        var cats = cd.data || [];
+        var photos = item.photos || [];
+
+        var boxName = item.box ? (item.box.name || '❓') : '';
+        var locName = (item.box && item.box.location) ? item.box.location.name : '';
+
+        var html = '';
+        html += '<p style="margin-bottom:0.75rem;color:#94a3b8;font-size:0.9rem;">Item ' + (idx + 1) + ' dari ' + items.length + '</p>';
+
+        html += '<div class="identify-layout">';
+
+        // LEFT: Photo
+        html += '<div class="identify-photo">';
+        if (photos.length > 0) {
+            html += '<img id="mainPhoto" class="photo-main" src="/uploads/items/' + item.id + '/' + photos[0].filename + '" onclick="zoomPhoto(this.src)">';
+            if (photos.length > 1) {
+                html += '<div class="photo-strip" id="ps" style="margin-bottom:0;">';
+                for (var i = 0; i < photos.length; i++) {
+                    var cls = (i === 0) ? 'active' : '';
+                    html += '<img src="/uploads/items/' + item.id + '/' + photos[i].filename + '" class="' + cls + '" onclick="clickPhoto(this)">';
+                }
+                html += '</div>';
+            }
+        } else {
+            html += '<p style="color:#94a3b8;text-align:center;padding:2rem;">Belum ada foto.</p>';
+        }
+        html += '</div>';
+
+        // RIGHT: Info + Form
+        html += '<div class="identify-info">';
+
+        // Box info (read-only)
+        if (boxName) {
+            html += '<div class="box-notice">';
+            html += '<div class="field"><label>📦 Box</label><div class="value">' + boxName + '</div></div>';
+            if (locName) html += '<div class="field"><label>📍 Lokasi</label><div class="value">' + locName + '</div></div>';
+            html += '</div>';
+        } else {
+            html += '<div class="box-notice warning">';
+            html += '<p style="color:#f59e0b;">⚠️ Item ini belum punya box. <a href="/upload" style="color:#60a5fa;">Upload ulang</a> dengan memilih box.</p>';
+            html += '</div>';
+        }
+
+        // Name + Quantity
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">';
+        html += '<div style="grid-column:1/-1;"><label>Nama</label></div>';
+        html += '<div style="grid-column:1/-1;"><input id="in" value="' + (item.name || '') + '" placeholder="Nama item" style="width:100%;"></div>';
+        html += '<div><label>Jumlah</label><input id="iq" type="number" value="' + (item.quantity || 1) + '" min="1" style="width:100%;"></div>';
+        html += '<div><label>Satuan</label><input id="iu" value="' + (item.unit || 'pcs') + '" style="width:100%;"></div>';
+        html += '</div>';
+
+        // Categories
+        html += '<div style="margin-top:1rem;"><label>Kategori</label></div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.3rem;" id="catContainer">';
+        if (cats.length > 0) {
+            for (var c = 0; c < cats.length; c++) {
+                html += '<label style="display:flex;align-items:center;gap:0.3rem;background:#334155;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.85rem;cursor:pointer;">';
+                html += '<input type="checkbox" class="cat-cb" value="' + cats[c].id + '"> ' + cats[c].name;
+                html += '</label>';
+            }
+        } else {
+            html += '<p style="color:#94a3b8;">Belum ada kategori. <a href="/categories">Tambah</a></p>';
+        }
+        html += '</div>';
+
+        // Description
+        html += '<div style="margin-top:1rem;"><label>Deskripsi</label></div>';
+        html += '<div><input id="idd" value="' + (item.description || '') + '" style="width:100%;"></div>';
+
+        // Notes
+        html += '<div style="margin-top:0.5rem;"><label>Notes</label></div>';
+        html += '<div><input id="inotes" value="' + (item.notes || '') + '" style="width:100%;"></div>';
+
+        // Buttons
+        html += '<div style="display:flex;gap:0.5rem;margin-top:1.5rem;">';
+        html += '<button id="saveBtn" onclick="saveItem()" style="flex:1;padding:0.85rem;font-size:1rem;">✅ Simpan & Next</button>';
+        html += '<button onclick="skipItem()" style="padding:0.85rem 1.5rem;font-size:1rem;background:#475569;">⏭️ Skip</button>';
+        html += '</div>';
+
+        html += '</div>'; // end right
+        html += '</div>'; // end layout
+
+        document.getElementById('identifyArea').innerHTML = html;
+    }).catch(function(e) {
+        alert('Error: ' + e.message);
+    });
+}
+
+function clickPhoto(el) {
+    var imgs = document.querySelectorAll('#ps img');
+    for (var i = 0; i < imgs.length; i++) { imgs[i].classList.remove('active'); }
+    el.classList.add('active');
+    var mp = document.getElementById('mainPhoto');
+    if (mp) { mp.src = el.src; }
+}
+
+function zoomPhoto(src) {
+    // Simple zoom overlay
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.onclick = function() { document.body.removeChild(overlay); };
+    var img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;';
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+}
+
+function saveItem() {
+    var item = items[idx];
+    var name = document.getElementById('in').value.trim();
+    if (!name) { alert('Nama item wajib diisi'); return; }
+
+    var catIds = [];
+    var cbs = document.querySelectorAll('.cat-cb:checked');
+    for (var i = 0; i < cbs.length; i++) { catIds.push(cbs[i].value); }
+
+    var btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳...';
+
+    var body = 'name=' + encodeURIComponent(name)
+        + '&box_id=' + encodeURIComponent(item.box_id || '')
+        + '&quantity=' + encodeURIComponent(parseInt(document.getElementById('iq').value) || 1)
+        + '&unit=' + encodeURIComponent(document.getElementById('iu').value || 'pcs')
+        + '&description=' + encodeURIComponent(document.getElementById('idd').value || '')
+        + '&notes=' + encodeURIComponent(document.getElementById('inotes').value || '')
+        + '&category_ids=' + encodeURIComponent(catIds.join(','));
+
+    fetch('/api/items/' + item.id + '/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) {
+            idx++;
+            showItem();
+        } else {
+            alert(d.detail || 'Gagal menyimpan');
+            btn.disabled = false;
+            btn.textContent = '✅ Simpan & Next';
+        }
+    }).catch(function(e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = '✅ Simpan & Next';
+    });
+}
+
+function skipItem() {
+    idx++;
+    showItem();
+}
+
+loadItems();
+</script>
+{% endblock %}

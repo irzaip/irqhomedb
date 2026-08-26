@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Upload{% endblock %}
+{% block heading %}📤 Upload{% endblock %}
+{% block content %}
+
+<div id="step1" class="card">
+    <h2 style="margin-bottom:1rem;font-size:1.3rem;">1️⃣ Lokasi</h2>
+    <p style="color:#94a3b8;margin-bottom:1rem;">Pilih lokasi yang sudah ada, <strong>atau ketik nama lokasi baru</strong>.</p>
+
+    <div style="margin-bottom:1rem;">
+        <label style="font-size:0.9rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Pilih lokasi yang sudah ada</label>
+        <select id="locSelect" style="width:100%;padding:0.75rem;font-size:1rem;">
+            <option value="">— Pilih Lokasi Existing —</option>
+        </select>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+        <label style="font-size:0.9rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Atau ketik lokasi baru</label>
+        <input id="locNew" placeholder="Contoh: Ruang Kerja, Garasi, Dapur" style="width:100%;padding:0.75rem;font-size:1rem;">
+    </div>
+
+    <div style="margin-bottom:1rem;">
+        <label style="font-size:0.9rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">📸 Foto lokasi (opsional)</label>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <label style="flex:1;text-align:center;border:1px solid #334155;border-radius:8px;padding:0.75rem;cursor:pointer;">
+                📷 Kamera<br>
+                <input type="file" accept="image/*" capture="environment" id="locPhotoCam" style="display:none;" onchange="document.getElementById('locPhoto').files=this.files;this.parentElement.innerHTML+='<span style=color:#22c55e;font-size:0.8rem;>✓ Terpilih</span>'">
+            </label>
+            <label style="flex:1;text-align:center;border:1px solid #334155;border-radius:8px;padding:0.75rem;cursor:pointer;">
+                📁 Galeri<br>
+                <input type="file" accept="image/*" id="locPhoto" style="display:none;" onchange="this.parentElement.innerHTML+='<span style=color:#22c55e;font-size:0.8rem;>✓ '+this.files.length+' foto</span>'">
+            </label>
+        </div>
+    </div>
+
+    <button onclick="saveLocation()" style="width:100%;padding:0.85rem;font-size:1.1rem;">✅ Lanjut ke Box</button>
+</div>
+
+<div id="step2" style="display:none;" class="card">
+    <h2 style="margin-bottom:1rem;font-size:1.3rem;">2️⃣ Box</h2>
+    <p style="color:#94a3b8;margin-bottom:1rem;">Box = koper, laci, kardus, case tempat item disimpan.</p>
+
+    <div style="margin-bottom:1rem;">
+        <label style="font-size:0.9rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Pilih box yang sudah ada di lokasi ini</label>
+        <select id="boxSelect" style="width:100%;padding:0.75rem;font-size:1rem;">
+            <option value="">— Pilih Box —</option>
+        </select>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+        <label style="font-size:0.9rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Atau ketik box baru</label>
+        <input id="boxNew" placeholder="Contoh: Koper Alat, Laci 1, Kardus Baut" style="width:100%;padding:0.75rem;font-size:1rem;">
+    </div>
+
+    <div style="margin-bottom:1rem;">
+        <label style="font-size:0.9rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">📸 Foto box (opsional)</label>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <label style="flex:1;text-align:center;border:1px solid #334155;border-radius:8px;padding:0.75rem;cursor:pointer;">
+                📷 Kamera<br>
+                <input type="file" accept="image/*" capture="environment" id="boxPhotoCam" style="display:none;" onchange="document.getElementById('boxPhoto').files=this.files;this.parentElement.innerHTML+='<span style=color:#22c55e;font-size:0.8rem;>✓ Terpilih</span>'">
+            </label>
+            <label style="flex:1;text-align:center;border:1px solid #334155;border-radius:8px;padding:0.75rem;cursor:pointer;">
+                📁 Galeri<br>
+                <input type="file" accept="image/*" id="boxPhoto" style="display:none;" onchange="this.parentElement.innerHTML+='<span style=color:#22c55e;font-size:0.8rem;>✓ '+this.files.length+' foto</span>'">
+            </label>
+        </div>
+    </div>
+
+    <button onclick="saveBox()" style="width:100%;padding:0.85rem;font-size:1.1rem;">✅ Lanjut Upload Item</button>
+</div>
+
+<div id="step3" style="display:none;" class="card">
+    <h2 style="margin-bottom:0.5rem;font-size:1.3rem;">3️⃣ Upload Item</h2>
+    <p id="locInfo" style="color:#94a3b8;margin-bottom:1rem;font-size:1rem;"></p>
+
+    <div style="margin-bottom:1rem;">
+        <div style="border:2px dashed #334155;border-radius:12px;padding:1.5rem;text-align:center;margin-bottom:1rem;">
+            <p style="font-weight:600;margin-bottom:0.75rem;font-size:1.1rem;">📷 Ambil Foto (Kamera)</p>
+            <input type="file" accept="image/*" capture="environment" id="camInput" style="padding:0.5rem;">
+            <p style="color:#475569;font-size:0.85rem;margin-top:0.5rem;">1 foto = 1 item</p>
+        </div>
+        <div style="border:2px dashed #334155;border-radius:12px;padding:1.5rem;text-align:center;">
+            <p style="font-weight:600;margin-bottom:0.75rem;font-size:1.1rem;">📁 Pilih dari Galeri</p>
+            <input type="file" accept="image/*" multiple id="galInput" style="padding:0.5rem;">
+            <p style="color:#475569;font-size:0.85rem;margin-top:0.5rem;">Banyak foto = banyak item terpisah</p>
+        </div>
+    </div>
+
+    <div id="upStatus" style="display:none;">
+        <div style="background:#334155;border-radius:8px;height:12px;overflow:hidden;margin-bottom:0.5rem;">
+            <div id="upBar" style="background:#2563eb;height:100%;width:0%;transition:width 0.3s;"></div>
+        </div>
+        <p id="upText" style="color:#94a3b8;font-size:0.9rem;"></p>
+    </div>
+
+    <div id="upResult" style="margin-top:1rem;display:none;"></div>
+
+    <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <a href="/" class="btn" style="flex:1;text-align:center;padding:0.75rem;font-size:1rem;">🏠 Selesai</a>
+        <a href="/items/identify" class="btn" style="flex:1;text-align:center;padding:0.75rem;font-size:1rem;">🏷️ Identify</a>
+    </div>
+</div>
+
+<script>
+let locId=null, boxId=null, locName='', boxName='';
+
+// Load existing locations
+fetch('/api/locations').then(r=>r.json()).then(d=>{
+    if(d.success){
+        const s=document.getElementById('locSelect');
+        d.data.forEach(l=>{
+            const o=document.createElement('option');
+            o.value=l.id; o.textContent=l.name;
+            s.appendChild(o);
+        });
+    }
+});
+
+async function saveLocation(){
+    const sel=document.getElementById('locSelect');
+    const inp=document.getElementById('locNew');
+    let name = inp.value.trim() || (sel.value ? sel.options[sel.selectedIndex].text : '');
+
+    if(!name){ alert('Nama lokasi wajib diisi'); return; }
+
+    // Kalo pilih existing, lokasi id dari select
+    if(sel.value && !inp.value.trim()){
+        locId = parseInt(sel.value);
+        locName = sel.options[sel.selectedIndex].text;
+    } else {
+        // Buat lokasi baru
+        const p = new URLSearchParams();
+        p.append('name', name);
+        const r = await fetch('/api/locations', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p});
+        const d = await r.json();
+        if(!d.success){ alert('Gagal buat lokasi'); return; }
+        locId = d.data.id;
+        locName = name;
+        // Upload foto lokasi
+        const f = document.getElementById('locPhoto').files[0];
+        if(f){ const fd=new FormData(); fd.append('files',f); await fetch(`/api/locations/${locId}/photos`, {method:'POST', body:fd}); }
+    }
+
+    document.getElementById('step1').style.display='none';
+    document.getElementById('step2').style.display='block';
+
+    // Load boxes di lokasi ini
+    const br = await fetch('/api/boxes?limit=200');
+    const bd = await br.json();
+    const bs = document.getElementById('boxSelect');
+    bs.innerHTML = '<option value="">— Pilih Box —</option>';
+    if(bd.success){
+        bd.data.forEach(b=>{
+            if(b.location_id==locId){
+                const o=document.createElement('option');
+                o.value=b.id; o.textContent=b.name||'❓';
+                bs.appendChild(o);
+            }
+        });
+    }
+}
+
+async function saveBox(){
+    const sel = document.getElementById('boxSelect');
+    const inp = document.getElementById('boxNew');
+    let name = inp.value.trim() || (sel.value ? sel.options[sel.selectedIndex].text : '');
+
+    if(!name){ alert('Nama box wajib diisi'); return; }
+
+    if(sel.value && !inp.value.trim()){
+        boxId = sel.value;
+        boxName = sel.options[sel.selectedIndex].text;
+    } else {
+        const p = new URLSearchParams();
+        p.append('name', name);
+        p.append('location_id', locId);
+        const r = await fetch('/api/boxes/create-with-photos', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p});
+        const d = await r.json();
+        if(!d.success){ alert('Gagal buat box'); return; }
+        boxId = d.data.id;
+        boxName = name;
+        const f = document.getElementById('boxPhoto').files[0];
+        if(f){ const fd=new FormData(); fd.append('files',f); await fetch(`/api/boxes/${boxId}/photos`, {method:'POST', body:fd}); }
+    }
+
+    document.getElementById('step2').style.display='none';
+    document.getElementById('step3').style.display='block';
+    document.getElementById('locInfo').innerHTML = `📍 <strong>${locName}</strong> → 📦 <strong>${boxName}</strong>`;
+}
+
+document.getElementById('camInput').onchange = async function(e){
+    const f = e.target.files[0];
+    if(f){ await uploadFiles([f]); this.value=''; }
+};
+document.getElementById('galInput').onchange = async function(e){
+    const fs = Array.from(e.target.files);
+    if(fs.length){ await uploadFiles(fs); this.value=''; }
+};
+
+async function uploadFiles(files){
+    const s=document.getElementById('upStatus'), bar=document.getElementById('upBar'), txt=document.getElementById('upText'), res=document.getElementById('upResult');
+    s.style.display='block'; res.style.display='none'; bar.style.width='10%'; txt.textContent='0/'+files.length;
+    let done=0;
+    for(const f of files){
+        const fd=new FormData(); fd.append('files',f); fd.append('box_id', boxId);
+        try{ const r=await fetch('/api/upload',{method:'POST',body:fd}); const d=await r.json(); if(d.success) done++; }catch(e){}
+        bar.style.width=Math.min(100,(done/files.length)*100)+'%'; txt.textContent=done+'/'+files.length;
+    }
+    bar.style.width='100%'; txt.textContent='✅ '+done+' item terupload';
+    res.innerHTML='<div style="background:#065f46;border:1px solid #059669;border-radius:8px;padding:1.2rem;font-size:1rem;line-height:1.8;">✅ <strong>'+done+' item</strong> di 📦 <strong>'+boxName+'</strong><br><br><a href="/items/identify" class="btn" style="padding:0.75rem 1.5rem;">🏷️ Identify Items</a></div>';
+    res.style.display='block';
+}
+</script>
+{% endblock %}

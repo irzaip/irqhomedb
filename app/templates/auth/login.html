@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>irqhomedb — Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-box {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin-bottom: 0.25rem; }
+        p.sub { color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.25rem; }
+        input {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        input:focus { outline: none; border-color: #2563eb; }
+        button {
+            width: 100%;
+            padding: 0.6rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:hover { background: #1d4ed8; }
+        .error { color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+        a { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>📦 irqhomedb</h1>
+        <p class="sub">Inventory Rumah Irza</p>
+        <div class="error" id="error"></div>
+        <form id="loginForm">
+            <label>Username</label>
+            <input type="text" id="username" name="username" required autofocus>
+            <label>Password</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">Login</button>
+        </form>
+        <p style="margin-top:1rem;text-align:center;font-size:0.8rem;color:#475569;">
+            Belum punya akun? <a href="#" onclick="showRegister()">Register</a>
+        </p>
+        <form id="registerForm" style="display:none;margin-top:1rem;border-top:1px solid #334155;padding-top:1rem;">
+            <label>Username Baru</label>
+            <input type="text" id="reg_username" required>
+            <label>Password</label>
+            <input type="password" id="reg_password" required>
+            <label>Nama Tampilan</label>
+            <input type="text" id="reg_display" placeholder="Irza">
+            <button type="submit">Register</button>
+        </form>
+    </div>
+    <script>
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) { window.location.href = '/'; }
+            else {
+                const err = document.getElementById('error');
+                err.textContent = data.error || 'Login gagal';
+                err.style.display = 'block';
+            }
+        };
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('reg_username').value,
+                    password: document.getElementById('reg_password').value,
+                    display_name: document.getElementById('reg_display').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) { alert('Akun dibuat! Silakan login.'); showLogin(); }
+            else { alert(data.error || 'Gagal register'); }
+        };
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        }
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

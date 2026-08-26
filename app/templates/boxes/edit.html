@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Edit Box{% endblock %}
+{% block heading %}✏️ Edit: {{ box.name or '❓ Box' }}{% endblock %}
+{% block content %}
+<style>
+.edit-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.edit-photo {
+    display: flex;
+    flex-direction: column;
+}
+.edit-photo .photo-main {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: contain;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.photo-input {
+    border: 2px dashed #334155;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    margin-top: 0.5rem;
+}
+.photo-input:hover { border-color: #2563eb; }
+@media (max-width: 768px) {
+    .edit-layout { grid-template-columns: 1fr; }
+    .edit-photo .photo-main { aspect-ratio: auto; max-height: 300px; }
+}
+</style>
+<div class="card">
+    <div class="edit-layout">
+        <!-- Left: Photo -->
+        <div class="edit-photo">
+            <img id="preview" class="photo-main"
+                 src="{% if box.photos %}/uploads/boxes/{{ box.id }}/{{ box.photos[0].filename }}{% else %}data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect fill='%230f172a' width='200' height='200'/><text x='100' y='100' text-anchor='middle' fill='%23475569' font-size='40'>📷</text></svg>{% endif %}">
+            <div class="photo-input" onclick="document.getElementById('photoFile').click()">
+                <input type="file" accept="image/*" id="photoFile" style="display:none" onchange="previewPhoto(this)">
+                <p style="color:#94a3b8;">📸 Klik untuk ganti foto box</p>
+            </div>
+            {% if box.photos|length > 1 %}
+            <div class="photo-strip" id="photoStrip" style="margin-top:0.5rem;margin-bottom:0;">
+                {% for p in box.photos %}
+                <img src="/uploads/boxes/{{ box.id }}/{{ p.filename }}"
+                     class="{% if loop.first %}active{% endif %}"
+                     onclick="selectExisting(this, '{{ p.filename }}')">
+                {% endfor %}
+                <p style="color:#475569;font-size:0.8rem;width:100%;">Klik thumbnail untuk pilih foto utama</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Form -->
+        <div>
+            <form id="editForm" onsubmit="return saveEdit(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+                    <div style="grid-column:1/-1;"><label>Nama Box</label></div>
+                    <div style="grid-column:1/-1;"><input id="name" value="{{ box.name or '' }}" required style="width:100%;"></div>
+
+                    <div style="grid-column:1/-1;"><label>Lokasi</label></div>
+                    <div style="grid-column:1/-1;">
+                        <select id="locSel" style="width:100%;">
+                            <option value="">— Tidak ada lokasi —</option>
+                            {% for l in locations %}
+                            <option value="{{ l.id }}" {% if box.location_id == l.id %}selected{% endif %}>{{ l.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="grid-column:1/-1;"><label>Deskripsi</label></div>
+                    <div style="grid-column:1/-1;"><input id="desc" value="{{ box.description or '' }}" style="width:100%;"></div>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;margin-top:1.5rem;">
+                    <button type="submit" style="flex:1;padding:0.85rem;font-size:1rem;">💾 Simpan</button>
+                    <a href="/boxes/{{ box.id }}" class="btn" style="background:#475569;padding:0.85rem;font-size:1rem;text-align:center;">↩ Batal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+var newPhotoFile = null;
+var keepPhoto = true;
+
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            newPhotoFile = input.files[0];
+            keepPhoto = false;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function selectExisting(el, filename) {
+    document.querySelectorAll('#photoStrip img').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('preview').src = '/uploads/boxes/{{ box.id }}/' + filename;
+    newPhotoFile = null;
+    keepPhoto = true;
+}
+
+async function saveEdit(e) {
+    e.preventDefault();
+    var btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '⏳...';
+
+    var data = new URLSearchParams();
+    data.append('name', document.getElementById('name').value);
+    data.append('location_id', parseInt(document.getElementById('locSel').value) || 0);
+    data.append('description', document.getElementById('desc').value || '');
+
+    var r = await fetch('/api/boxes/{{ box.id }}/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: data
+    });
+    var d = await r.json();
+    if (!d.success) {
+        alert(d.detail || 'Gagal');
+        btn.disabled = false; btn.textContent = '💾 Simpan';
+        return;
+    }
+
+    // Upload new photo if changed
+    if (newPhotoFile) {
+        var fd = new FormData();
+        fd.append('files', newPhotoFile);
+        var pr = await fetch('/api/boxes/{{ box.id }}/photos', { method: 'POST', body: fd });
+        var pd = await pr.json();
+        if (!pd.success) { alert('Foto gagal diupload tapi data tersimpan.'); }
+    }
+
+    window.location.href = '/boxes/{{ box.id }}';
+}
+</script>
+{% endblock %}

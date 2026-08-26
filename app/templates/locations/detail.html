@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ loc.name }}{% endblock %}
+{% block heading %}📍 {{ loc.name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="photo-strip">
+        {% for p in loc.photos %}
+        <img src="/uploads/locations/{{ loc.id }}/{{ p.filename }}" class="{% if loop.first %}active{% endif %}" onclick="showPhoto(this)">
+        {% endfor %}
+    </div>
+    <img id="mainPhoto" class="photo-main" src="{% if loc.photos %}/uploads/locations/{{ loc.id }}/{{ loc.photos[0].filename }}{% endif %}">
+
+    <div style="margin-top:1rem;">
+        <p><strong>Ruangan:</strong> {{ loc.room or '—' }}</p>
+        <p><strong>Parent:</strong> {{ loc.parent.name if loc.parent else '—' }}</p>
+    </div>
+
+    {% if loc.boxes %}
+    <h3 style="margin:1.5rem 0 0.75rem;">Boxes ({{ loc.boxes|length }})</h3>
+    <div class="grid-list">
+        {% for b in loc.boxes %}
+        <div class="item-card" onclick="location.href='/boxes/{{ b.id }}'" style="cursor:pointer;">
+            <div class="thumb">{% if b.photos %}<img src="/uploads/boxes/{{ b.id }}/{{ b.photos[0].filename }}">{% else %}📦{% endif %}</div>
+            <div class="info"><div class="name">{{ b.name or '❓' }}</div></div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#94a3b8;margin-top:1rem;">Belum ada box di lokasi ini.</p>
+    {% endif %}
+</div>
+<script>
+function showPhoto(el){document.querySelectorAll('.photo-strip img').forEach(i=>i.classList.remove('active'));el.classList.add('active');document.getElementById('mainPhoto').src=el.src;}
+</script>
+{% endblock %}
