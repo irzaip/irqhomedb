@@ -112,10 +112,10 @@ Buka HP: `http://192.168.30.50:8080`
 ```
 irqhomedb/
 ├── app/
-│   ├── main.py              # FastAPI entry + page routes
-│   ├── config.py            # Konfigurasi path, upload, db
+│   ├── main.py              # FastAPI app factory, lifespan & middleware
+│   ├── config.py            # Konfigurasi path, upload, db, secret key
 │   ├── database.py          # SQLAlchemy engine + session
-│   ├── models/              # 10 model SQLAlchemy
+│   ├── models/              # Model SQLAlchemy (dengan index pada foreign key & status)
 │   │   ├── item.py
 │   │   ├── box.py
 │   │   ├── location.py
@@ -125,32 +125,37 @@ irqhomedb/
 │   │   ├── box_photo.py
 │   │   ├── location_photo.py
 │   │   ├── log.py           # Audit trail (ItemLog)
-│   │   └── user.py
-│   ├── routers/             # API endpoints
-│   │   ├── items.py         # CRUD item + identify
-│   │   ├── boxes.py         # CRUD box + identify + edit
-│   │   ├── categories.py    # CRUD kategori
-│   │   ├── locations.py     # CRUD lokasi
-│   │   ├── photos.py        # Upload & manage foto
-│   │   ├── auth.py          # Login/logout
-│   │   └── export.py        # Export CSV
-│   ├── services/
-│   │   └── auth_service.py  # Session auth
-│   ├── templates/           # 17 halaman Jinja2
-│   │   ├── base.html        # Layout: sidebar + main
+│   │   └── user.py          # User (password_hash deferred)
+│   ├── routers/             # Endpoint & route handlers
+│   │   ├── pages.py         # Route halaman HTML (Jinja2)
+│   │   ├── items.py         # CRUD item + identify (API)
+│   │   ├── boxes.py         # CRUD box + identify + edit (API)
+│   │   ├── categories.py    # CRUD kategori (API)
+│   │   ├── locations.py     # CRUD lokasi (API)
+│   │   ├── photos.py        # Upload & manage foto (API)
+│   │   ├── auth.py          # Login / logout / register / me (API)
+│   │   └── export.py        # Export CSV & JSON (API)
+│   ├── services/            # Business logic & shared helpers
+│   │   ├── auth_service.py  # Session auth (itsdangerous + passlib)
+│   │   ├── entity_service.py# Helper CRUD & form parsing (item/box/location)
+│   │   └── photo_service.py # Validasi format/PIL, thumbnail, & storage
+│   ├── templates/           # Halaman template Jinja2
+│   │   ├── _macros.html     # Reusable macro (navigation sidebar/mobile)
+│   │   ├── base.html        # Base layout & shell
 │   │   ├── dashboard.html
 │   │   ├── upload.html
 │   │   ├── auth/login.html
 │   │   ├── items/           # list, detail, edit, identify, add_photos
 │   │   ├── boxes/           # list, detail, edit, identify, add_items
 │   │   ├── categories/
-│   │   ├── locations/
-│   │   └── ...
-│   └── static/              # CSS/JS
+│   │   └── locations/
+│   └── static/              # Asset static
+│       ├── css/app.css      # CSS styling (responsif mobile & desktop)
+│       └── js/app.js        # Shared client JS helpers (esc, apiFetch, sidebar)
 ├── scripts/
-│   └── seed.py              # Data awal
-├── data/                    # SQLite DB (auto-created)
-├── uploads/                 # Foto items / boxes / locations
+│   └── seed.py              # Data awal & user default
+├── data/                    # SQLite DB (irqhomedb.db)
+├── uploads/                 # Storage foto asli & thumbnail
 │   ├── items/
 │   ├── boxes/
 │   └── locations/
@@ -168,35 +173,54 @@ irqhomedb/
 | `Item` | Part / komponen — entitas utama |
 | `Category` | Tag / kategori (tree hierarkis) |
 | `ItemCategory` | Junction many-to-many item ↔ kategori |
-| `ItemPhoto` | Foto item (multi-angle) |
-| `BoxPhoto` | Foto box (multi-angle) |
+| `ItemPhoto` | Foto item (multi-angle & thumbnail) |
+| `BoxPhoto` | Foto box (multi-angle & thumbnail) |
 | `LocationPhoto` | Foto lokasi |
 | `ItemLog` | Audit trail perubahan item |
-| `User` | Akun (irza + asisten) |
+| `User` | Akun (`password_hash` diamankan dengan deferred loading) |
 
 ---
 
 ## 🌐 API Endpoints
 
-| Method | Endpoint | Fungsi |
-|--------|----------|--------|
-| POST | `/api/auth/login` | Login |
-| GET | `/api/items` | List item (search, filter) |
-| GET | `/api/items/{id}` | Detail item |
-| POST | `/api/items/{id}/edit` | Edit item |
-| POST | `/api/items/{id}/identify` | Identify item |
-| DELETE | `/api/items/{id}` | Hapus item |
-| GET | `/api/boxes` | List box |
-| GET | `/api/boxes/{id}` | Detail box |
-| POST | `/api/boxes/{id}/edit` | Edit box |
-| POST | `/api/boxes/{id}/identify` | Identify box |
-| DELETE | `/api/boxes/{id}` | Hapus box |
-| GET/POST | `/api/categories` | CRUD kategori |
-| GET/POST | `/api/locations` | CRUD lokasi |
-| POST | `/api/upload` | Upload foto → auto-create item |
-| POST | `/api/items/{id}/photos` | Tambah foto ke item |
-| POST | `/api/boxes/{id}/photos` | Tambah foto ke box |
-| GET | `/api/export/csv` | Export CSV |
+> **Keamanan & Auth**: Semua endpoint mutasi data (`POST`, `PUT`, `DELETE`) dan seluruh rute halaman web dilindungi dengan autentikasi session cookie. Endpoint baca data (`GET`) tetap terbuka untuk kemudahan integrasi LAN.
+
+| Method | Endpoint | Fungsi | Auth Required |
+|--------|----------|--------|---------------|
+| POST | `/api/auth/login` | Login user | ❌ Tidak |
+| POST | `/api/auth/logout` | Logout user | ✅ Ya |
+| GET | `/api/auth/me` | Cek status user login | ❌ Tidak |
+| POST | `/api/auth/register` | Tambah user baru (admin/auth only) | ✅ Ya |
+| GET | `/api/items` | List item (search, filter, pagination) | ❌ Tidak |
+| GET | `/api/items/unidentified/all` | List item yang belum diidentifikasi | ❌ Tidak |
+| DELETE | `/api/items/{id}` | Hapus item | ✅ Ya |
+| POST | `/api/items/{id}/identify` | Identifikasi nama, box, kategori item | ✅ Ya |
+| POST | `/api/items/{id}/edit` | Edit detail item | ✅ Ya |
+| GET | `/api/boxes` | List box (search, filter) | ❌ Tidak |
+| GET | `/api/boxes/unidentified/all` | List box yang belum diidentifikasi | ❌ Tidak |
+| GET | `/api/boxes/{id}` | Detail box & daftar itemnya | ❌ Tidak |
+| GET | `/api/boxes/{id}/items` | List item di dalam box | ❌ Tidak |
+| POST | `/api/boxes/create-with-photos` | Buat box baru | ✅ Ya |
+| POST | `/api/boxes/{id}/identify` | Identifikasi box | ✅ Ya |
+| POST | `/api/boxes/{id}/edit` | Edit detail box | ✅ Ya |
+| DELETE | `/api/boxes/{id}` | Hapus box | ✅ Ya |
+| GET | `/api/categories` | List semua kategori | ❌ Tidak |
+| POST | `/api/categories` | Tambah kategori baru | ✅ Ya |
+| PUT | `/api/categories/{id}` | Update kategori | ✅ Ya |
+| DELETE | `/api/categories/{id}` | Hapus kategori | ✅ Ya |
+| GET | `/api/locations` | List semua lokasi | ❌ Tidak |
+| GET | `/api/locations/{id}` | Detail lokasi | ❌ Tidak |
+| POST | `/api/locations` | Tambah lokasi baru | ✅ Ya |
+| PUT | `/api/locations/{id}` | Update lokasi | ✅ Ya |
+| DELETE | `/api/locations/{id}` | Hapus lokasi | ✅ Ya |
+| POST | `/api/upload` | Upload foto → auto-create unidentified item | ✅ Ya |
+| POST | `/api/items/{id}/photos` | Tambah foto ke item | ✅ Ya |
+| DELETE | `/api/items/{id}/photos/{photo_id}` | Hapus foto item | ✅ Ya |
+| POST | `/api/boxes/{id}/photos` | Tambah foto ke box | ✅ Ya |
+| DELETE | `/api/boxes/{id}/photos/{photo_id}` | Hapus foto box | ✅ Ya |
+| POST | `/api/locations/{id}/photos` | Tambah foto ke lokasi | ✅ Ya |
+| GET | `/api/export/csv` | Export data item ke format CSV | ❌ Tidak |
+| GET | `/api/export/json` | Export data item ke format JSON | ❌ Tidak |
 
 ---
 
