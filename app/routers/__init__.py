@@ -5,3 +5,4 @@ from app.routers.categories import router as categories_router
 from app.routers.locations import router as locations_router
 from app.routers.photos import router as photos_router
 from app.routers.export import router as export_router
+from app.routers.pages import router as pages_router

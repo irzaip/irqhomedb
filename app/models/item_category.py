@@ -11,7 +11,7 @@ class ItemCategory(Base):
         ForeignKey("items.id", ondelete="CASCADE"), primary_key=True
     )
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True, index=True
     )
 
     __table_args__ = (

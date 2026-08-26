@@ -13,10 +13,10 @@ class Item(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    status: Mapped[str] = mapped_column(String(20), default="unidentified")
+    status: Mapped[str] = mapped_column(String(20), default="unidentified", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    box_id: Mapped[str] = mapped_column(ForeignKey("boxes.id"), nullable=True)
+    box_id: Mapped[str] = mapped_column(ForeignKey("boxes.id"), nullable=True, index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     min_quantity: Mapped[int] = mapped_column(Integer, default=0)
     unit: Mapped[str] = mapped_column(String(20), default="pcs")

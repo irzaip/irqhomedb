@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from app.database import get_db
 from app.models.box import Box
-from app.models.box_photo import BoxPhoto
 from app.models.item import Item
-from app.models.location import Location
+from app.services.auth_service import require_user
+from app.services.entity_service import apply_box_fields, list_unidentified
 
 router = APIRouter(prefix="/api/boxes", tags=["boxes"])
 
@@ -43,7 +42,7 @@ def get_box(box_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/{box_id}")
-def delete_box(box_id: str, db: Session = Depends(get_db)):
+def delete_box(box_id: str, _user=Depends(require_user), db: Session = Depends(get_db)):
     box = db.query(Box).filter(Box.id == box_id).first()
     if not box:
         raise HTTPException(status_code=404, detail="Box not found")
@@ -58,15 +57,13 @@ def edit_box(
     name: str = "",
     location_id: int = 0,
     description: str = "",
+    _user=Depends(require_user),
     db: Session = Depends(get_db),
 ):
     box = db.query(Box).filter(Box.id == box_id).first()
     if not box:
         raise HTTPException(status_code=404, detail="Box not found")
-    box.name = name or None
-    box.location_id = location_id if location_id else None
-    box.description = description or None
-    box.status = "identified" if name else "unidentified"
+    apply_box_fields(box, name=name, location_id=location_id, description=description)
     db.commit()
     db.refresh(box)
     return {"success": True, "data": box}
@@ -78,17 +75,16 @@ def identify_box(
     name: str = "",
     location_id: int = 0,
     description: str = "",
+    _user=Depends(require_user),
     db: Session = Depends(get_db),
 ):
     box = db.query(Box).filter(Box.id == box_id).first()
     if not box:
         raise HTTPException(status_code=404, detail="Box not found")
-    box.name = name or None
-    if location_id:
-        box.location_id = location_id
-    if description:
-        box.description = description
-    box.status = "identified"
+    apply_box_fields(
+        box, name=name, location_id=location_id, description=description,
+        make_identified=True,
+    )
     db.commit()
     db.refresh(box)
     return {"success": True, "data": box}
@@ -96,7 +92,7 @@ def identify_box(
 
 @router.get("/unidentified/all")
 def list_unidentified_boxes(db: Session = Depends(get_db)):
-    boxes = db.query(Box).filter(Box.status == "unidentified").order_by(Box.created_at.desc()).all()
+    boxes = list_unidentified(db, Box)
     return {"success": True, "data": boxes, "total": len(boxes)}
 
 
@@ -106,12 +102,12 @@ def get_box_items(box_id: str, db: Session = Depends(get_db)):
     return {"success": True, "data": items, "total": len(items)}
 
 
-
 @router.post("/create-with-photos")
 async def create_box_with_photos(
     name: str = Form(""),
     location_id: int = Form(0),
     description: str = Form(""),
+    _user=Depends(require_user),
     db: Session = Depends(get_db),
 ):
     """Create a box (unidentified). Photos uploaded separately via later POST."""

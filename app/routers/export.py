@@ -1,5 +1,4 @@
 import csv
-import json
 import io
 
 from fastapi import APIRouter, Depends
@@ -22,7 +21,7 @@ def export_csv(db: Session = Depends(get_db)):
 
     for item in items:
         cat_names = ", ".join([c.name for c in item.categories]) if item.categories else ""
-        loc_name = item.location.name if item.location else ""
+        loc_name = item.box.location.name if (item.box and item.box.location) else ""
         writer.writerow([item.name, item.quantity, item.unit, cat_names, loc_name, item.description or "", item.notes or ""])
 
     output.seek(0)
@@ -44,7 +43,7 @@ def export_json(db: Session = Depends(get_db)):
             "quantity": item.quantity,
             "unit": item.unit,
             "categories": [c.name for c in item.categories] if item.categories else [],
-            "location": item.location.name if item.location else None,
+            "location": item.box.location.name if (item.box and item.box.location) else None,
             "description": item.description,
             "notes": item.notes,
         })

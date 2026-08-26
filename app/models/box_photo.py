@@ -11,7 +11,7 @@ class BoxPhoto(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     box_id: Mapped[str] = mapped_column(
-        ForeignKey("boxes.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("boxes.id", ondelete="CASCADE"), nullable=False, index=True
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

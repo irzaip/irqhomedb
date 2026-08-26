@@ -57,7 +57,7 @@ def me(user: User = Depends(get_session_user)):
 
 
 @router.post("/register")
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, _user=Depends(require_user), db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.username == req.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username sudah ada")

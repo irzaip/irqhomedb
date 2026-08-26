@@ -1,4 +1,6 @@
 import os
+import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,7 +22,14 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8080"))
 
 # Auth
-SECRET_KEY = os.getenv("SECRET_KEY", "irqhomedb-dev-secret-change-in-production")
+_DEFAULT_SECRET = "irqhomedb-dev-secret-change-in-production"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_SECRET)
+if SECRET_KEY == _DEFAULT_SECRET:
+    print(
+        "⚠️  WARNING: SECRET_KEY is the default dev value. "
+        "Set SECRET_KEY in .env for anything beyond local testing.",
+        file=sys.stderr,
+    )
 
 # Photo
 MAX_PHOTO_SIZE = 10 * 1024 * 1024  # 10MB

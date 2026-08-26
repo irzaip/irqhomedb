@@ -18,23 +18,47 @@
 <div id="loading" style="text-align:center;color:#94a3b8;padding:2rem;">Loading...</div>
 
 <script>
-fetch('/api/locations').then(r=>r.json()).then(d=>{
-    if(d.success) d.data.forEach(l=>document.getElementById('locFilter').innerHTML+=`<option value="${l.id}">${l.name}</option>`);
+apiFetch('/api/locations').then(function (d) {
+    if (!d.success) return;
+    var sel = document.getElementById('locFilter');
+    d.data.forEach(function (l) {
+        var opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = l.name;
+        sel.appendChild(opt);
+    });
 });
-async function loadBoxes(){
-    const q=document.getElementById('search').value,s=document.getElementById('statusFilter').value,loc=document.getElementById('locFilter').value;
-    const grid=document.getElementById('boxGrid');document.getElementById('loading').style.display='block';
-    let url=`/api/boxes?limit=100&search=${encodeURIComponent(q)}`;
-    if(s)url+=`&status=${s}`;if(loc)url+=`&location_id=${loc}`;
-    const res=await fetch(url);const d=await res.json();document.getElementById('loading').style.display='none';
-    if(!d.success||d.data.length===0){grid.innerHTML='<p style="color:#94a3b8;grid-column:1/-1;">Belum ada box.</p>';return;}
-    grid.innerHTML=d.data.map(b=>{
-        const n=b.name||'<em style="color:#f59e0b;">❓ Unidentified</em>';
-        const p=b.photos&&b.photos[0];const img=p?`<img src="/uploads/boxes/${b.id}/${p.filename}">`:'📦';
-        const l=b.location?b.location.name:'';
-        const cnt=b.items?b.items.length:0;
-        return `<div class="item-card" onclick="location.href='/boxes/${b.id}'" style="cursor:pointer;"><div class="thumb">${img}</div><div class="info"><div class="name">${b.name||'❓ Box'}</div><div class="meta">📍 ${l}</div><div class="meta">${cnt} item(s)</div></div></div>`;
-    }).join('');
+
+function loadBoxes() {
+    var q = document.getElementById('search').value;
+    var s = document.getElementById('statusFilter').value;
+    var loc = document.getElementById('locFilter').value;
+    var grid = document.getElementById('boxGrid');
+    document.getElementById('loading').style.display = 'block';
+    var url = '/api/boxes?limit=100&search=' + encodeURIComponent(q);
+    if (s) url += '&status=' + s;
+    if (loc) url += '&location_id=' + loc;
+    apiFetch(url).then(function (d) {
+        document.getElementById('loading').style.display = 'none';
+        if (!d.success || d.data.length === 0) {
+            grid.innerHTML = '<p style="color:#94a3b8;grid-column:1/-1;">Belum ada box.</p>';
+            return;
+        }
+        grid.innerHTML = d.data.map(function (b) {
+            var p = b.photos && b.photos[0];
+            var img = p ? '<img src="/uploads/boxes/' + encodeURIComponent(b.id) + '/' + esc(p.filename) + '">' : '📦';
+            var locName = b.location ? b.location.name : '';
+            var cnt = b.items ? b.items.length : 0;
+            var link = '/boxes/' + encodeURIComponent(b.id);
+            return '<div class="item-card" onclick="location.href=\'' + link + '\'" style="cursor:pointer;">'
+                + '<div class="thumb">' + img + '</div>'
+                + '<div class="info">'
+                + '<div class="name">' + esc(b.name || '❓ Box') + '</div>'
+                + '<div class="meta">📍 ' + esc(locName) + '</div>'
+                + '<div class="meta">' + cnt + ' item(s)</div>'
+                + '</div></div>';
+        }).join('');
+    });
 }
 loadBoxes();
 </script>

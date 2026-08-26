@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from functools import wraps
 
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from fastapi import Request, HTTPException, Depends
@@ -45,12 +44,3 @@ def require_user(user: User = Depends(get_session_user)) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
     return user
-
-
-def login_required(router_func):
-    """Decorator untuk route yang butuh login."""
-    @wraps(router_func)
-    async def wrapper(*args, **kwargs):
-        # Handled via dependency injection instead
-        return await router_func(*args, **kwargs)
-    return wrapper

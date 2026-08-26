@@ -13,11 +13,11 @@ class Box(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    status: Mapped[str] = mapped_column(String(20), default="unidentified")
+    status: Mapped[str] = mapped_column(String(20), default="unidentified", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     location_id: Mapped[int] = mapped_column(
-        ForeignKey("locations.id"), nullable=True
+        ForeignKey("locations.id"), nullable=True, index=True
     )
     upload_session_id: Mapped[str] = mapped_column(String(36), nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)

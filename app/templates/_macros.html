@@ -1,0 +1,28 @@
+{# Shared Jinja macros. Import with: {% import "_macros.html" as ui %} #}
+
+{# Main navigation — used for both the desktop sidebar and the mobile drawer.
+   on_mobile=true adds onclick handlers that close the drawer after navigation. #}
+{% macro nav(unidentified_boxes=none, unidentified_items=none, on_mobile=false) %}
+{% set close = ' onclick="toggleSidebar()"' if on_mobile else '' %}
+<nav>
+    <a href="/"{{ close | safe }}>📊 Dashboard</a>
+    <a href="/upload"{{ close | safe }}>📤 Upload</a>
+    <a href="/boxes"{{ close | safe }}>
+        📦 Boxes
+        {% if unidentified_boxes is defined and unidentified_boxes and unidentified_boxes > 0 %}
+        <span class="badge">{{ unidentified_boxes }}</span>
+        {% endif %}
+    </a>
+    <a href="/boxes/identify"{{ close | safe }}>🏷️ Identify Boxes</a>
+    <a href="/items"{{ close | safe }}>
+        📦 Items
+        {% if unidentified_items is defined and unidentified_items and unidentified_items > 0 %}
+        <span class="badge">{{ unidentified_items }}</span>
+        {% endif %}
+    </a>
+    <a href="/items/identify"{{ close | safe }}>🏷️ Identify Items</a>
+    <hr style="border-color:#334155;margin:0.75rem 0;">
+    <a href="/categories"{{ close | safe }}>🏷️ Categories</a>
+    <a href="/locations"{{ close | safe }}>📍 Locations</a>
+</nav>
+{% endmacro %}

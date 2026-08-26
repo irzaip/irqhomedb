@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from app.database import get_db
 from app.models.category import Category
+from app.services.auth_service import require_user
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
@@ -16,7 +15,7 @@ def list_categories(db: Session = Depends(get_db)):
 
 
 @router.post("")
-def create_category(name: str = Form(...), parent_id: int = Form(0), icon: str = Form(""), db: Session = Depends(get_db)):
+def create_category(name: str = Form(...), parent_id: int = Form(0), icon: str = Form(""), _user=Depends(require_user), db: Session = Depends(get_db)):
     cat = Category(
         name=name,
         parent_id=parent_id if parent_id else None,
@@ -29,14 +28,14 @@ def create_category(name: str = Form(...), parent_id: int = Form(0), icon: str =
 
 
 @router.put("/{cat_id}")
-def update_category(cat_id: int, name: str = "", parent_id: int = 0, icon: str = "", db: Session = Depends(get_db)):
+def update_category(cat_id: int, name: str = Form(""), parent_id: int = Form(0), icon: str = Form(""), _user=Depends(require_user), db: Session = Depends(get_db)):
     cat = db.query(Category).filter(Category.id == cat_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     if name:
         cat.name = name
     if parent_id:
-        cat.parent_id = parent_id if parent_id else None
+        cat.parent_id = parent_id
     if icon:
         cat.icon = icon
     db.commit()
@@ -45,7 +44,7 @@ def update_category(cat_id: int, name: str = "", parent_id: int = 0, icon: str =
 
 
 @router.delete("/{cat_id}")
-def delete_category(cat_id: int, db: Session = Depends(get_db)):
+def delete_category(cat_id: int, _user=Depends(require_user), db: Session = Depends(get_db)):
     cat = db.query(Category).filter(Category.id == cat_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")

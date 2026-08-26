@@ -11,7 +11,7 @@ class LocationPhoto(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     location_id: Mapped[int] = mapped_column(
-        ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("locations.id", ondelete="CASCADE"), nullable=False, index=True
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
