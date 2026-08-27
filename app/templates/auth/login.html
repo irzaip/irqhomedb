@@ -64,18 +64,6 @@
             <input type="password" id="password" name="password" required>
             <button type="submit">Login</button>
         </form>
-        <p style="margin-top:1rem;text-align:center;font-size:0.8rem;color:#475569;">
-            Belum punya akun? <a href="#" onclick="showRegister()">Register</a>
-        </p>
-        <form id="registerForm" style="display:none;margin-top:1rem;border-top:1px solid #334155;padding-top:1rem;">
-            <label>Username Baru</label>
-            <input type="text" id="reg_username" required>
-            <label>Password</label>
-            <input type="password" id="reg_password" required>
-            <label>Nama Tampilan</label>
-            <input type="text" id="reg_display" placeholder="Irza">
-            <button type="submit">Register</button>
-        </form>
     </div>
     <script>
         document.getElementById('loginForm').onsubmit = async (e) => {
@@ -92,33 +80,10 @@
             if (data.success) { window.location.href = '/'; }
             else {
                 const err = document.getElementById('error');
-                err.textContent = data.error || 'Login gagal';
+                err.textContent = data.detail || data.error || 'Login gagal';
                 err.style.display = 'block';
             }
         };
-        document.getElementById('registerForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: document.getElementById('reg_username').value,
-                    password: document.getElementById('reg_password').value,
-                    display_name: document.getElementById('reg_display').value
-                })
-            });
-            const data = await res.json();
-            if (data.success) { alert('Akun dibuat! Silakan login.'); showLogin(); }
-            else { alert(data.error || 'Gagal register'); }
-        };
-        function showRegister() {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('registerForm').style.display = 'block';
-        }
-        function showLogin() {
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('registerForm').style.display = 'none';
-        }
     </script>
 </body>
 </html>

@@ -31,22 +31,33 @@ def apply_item_fields(
     unit: str,
     quantity: str,
     category_ids: str,
+    make_identified: bool = False,
 ) -> Item:
     """Assign editable item fields from (stringly-typed) form values and sync
-    the many-to-many categories. Marks the item identified when it has a name.
-    Caller commits."""
+    the many-to-many categories. Caller commits.
+
+    edit (make_identified=False): the form reposts the full current state, so
+    an empty field is an explicit clear — categories are always replaced.
+    identify (make_identified=True): the form starts blank and only carries
+    what the user wants to fill in, so an empty category selection is left
+    alone rather than wiping categories the item already has.
+    """
+    name = (name or "").strip()
     item.name = name or None
     item.box_id = box_id or None
     item.description = description or None
     item.notes = notes or None
     item.quantity = max(1, parse_positive_int(quantity, 1))
     item.unit = unit or "pcs"
-    item.status = "identified" if item.name else "unidentified"
+    item.status = "identified" if (make_identified or name) else "unidentified"
 
     ids = parse_category_ids(category_ids)
-    db.query(ItemCategory).filter(ItemCategory.item_id == item.id).delete()
-    for cid in ids:
-        db.add(ItemCategory(item_id=item.id, category_id=cid))
+    if not make_identified or ids:
+        # edit: always authoritative. identify: only touch categories when the
+        # user actually picked some.
+        db.query(ItemCategory).filter(ItemCategory.item_id == item.id).delete()
+        for cid in ids:
+            db.add(ItemCategory(item_id=item.id, category_id=cid))
     return item
 
 
@@ -58,15 +69,27 @@ def apply_box_fields(
     description: str,
     make_identified: bool | None = None,
 ) -> Box:
-    """Assign editable box fields. When make_identified is None the status is
-    derived from having a name (edit behavior); pass True to force
-    "identified" (identify flow)."""
-    box.name = name or None
-    box.location_id = location_id if location_id else None
-    box.description = description or None
+    """Assign editable box fields.
+
+    identify (make_identified=True): the identify form starts with a blank
+    location select, so an omitted location/description is left untouched —
+    never overwriting an existing value with None. Status is forced to
+    "identified".
+    edit (make_identified=None): the form reposts the full state, so an empty
+    value is an explicit clear; status derives from having a name.
+    """
+    name = (name or "").strip()
     if make_identified is True:
+        box.name = name or None
+        if location_id:
+            box.location_id = location_id
+        if description:
+            box.description = description
         box.status = "identified"
-    elif make_identified is None:
+    else:
+        box.name = name or None
+        box.location_id = location_id if location_id else None
+        box.description = description or None
         box.status = "identified" if name else "unidentified"
     return box
 

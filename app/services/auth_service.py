@@ -44,3 +44,9 @@ def require_user(user: User = Depends(get_session_user)) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
     return user
+
+
+def require_admin(user: User = Depends(require_user)) -> User:
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    return user

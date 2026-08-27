@@ -71,6 +71,7 @@ def identify_item(
         item, db,
         name=name, box_id=box_id, description=description, notes=notes,
         unit=unit, quantity=quantity, category_ids=category_ids,
+        make_identified=True,
     )
     db.commit()
     db.refresh(item)

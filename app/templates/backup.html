@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Backup & Restore{% endblock %}
+{% block heading %}💾 Backup & Restore{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:0.5rem;">📤 Download Backup</h2>
+    <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:1rem;">
+        Unduh seluruh data (database + semua foto) sebagai satu file <code>.zip</code>,
+        dengan nama berdasarkan tanggal dan item pertama.
+    </p>
+    <a href="/api/backup" class="btn" style="padding:0.75rem 1.25rem;">💾 Download Backup (.zip)</a>
+</div>
+
+<div class="card">
+    <h2 style="font-size:1.1rem;margin-bottom:0.5rem;">📤 Restore dari Backup</h2>
+    <p style="font-size:0.85rem;color:#f59e0b;margin-bottom:1rem;">
+        ⚠️ Restore akan <strong>mengganti seluruh data saat ini</strong> dengan isi file backup.
+        Sebelum restore, salinan DB saat ini disimpan otomatis.
+    </p>
+    <input type="file" id="restoreFile" accept=".zip" style="margin-bottom:0.75rem;">
+    <br>
+    <button onclick="doRestore()" style="background:#dc2626;">📤 Restore Backup</button>
+</div>
+
+<script>
+function doRestore() {
+    var inp = document.getElementById('restoreFile');
+    if (!inp.files || !inp.files[0]) { alert('Pilih file .zip terlebih dahulu.'); return; }
+    if (!confirm('Yakin mau restore? Seluruh data saat ini akan diganti dengan isi backup.')) return;
+
+    var fd = new FormData();
+    fd.append('file', inp.files[0]);
+    var btn = event.target;
+    btn.disabled = true; btn.textContent = '⏳ Restoring...';
+
+    fetch('/api/restore', { method: 'POST', body: fd })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.success) { alert(d.data.message || 'Restore selesai.'); window.location.href = '/'; }
+            else { alert(d.detail || 'Restore gagal.'); btn.disabled = false; btn.textContent = '📤 Restore Backup'; }
+        })
+        .catch(function (e) {
+            alert('Error: ' + e.message);
+            btn.disabled = false; btn.textContent = '📤 Restore Backup';
+        });
+}
+</script>
+{% endblock %}

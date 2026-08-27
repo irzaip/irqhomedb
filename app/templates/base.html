@@ -8,7 +8,11 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>irqhomedb — {% block title %}Dashboard{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/app.css?v=2">
+    <link rel="stylesheet" href="/static/css/app.css?v=3">
+    {# Load app.js in <head> so apiFetch/esc/confirmDelete are defined before the
+       inline scripts in page content blocks run (they run at parse time, which
+       comes after the end of <body> where the script tag used to live). #}
+    <script src="/static/js/app.js?v=3"></script>
 </head>
 <body>
     <!-- Floating Home Button — kelihatan cuma di HP -->
@@ -46,6 +50,5 @@
             {% block content %}{% endblock %}
         </main>
     </div>
-    <script src="/static/js/app.js?v=2"></script>
 </body>
 </html>

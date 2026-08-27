@@ -7,16 +7,19 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import STATIC_DIR, ITEM_PHOTO_DIR, BOX_PHOTO_DIR, LOCATION_PHOTO_DIR
 from app.database import init_db
 from app.routers import (
-    auth_router, items_router, boxes_router, categories_router,
+    auth_router, users_router, items_router, boxes_router, categories_router,
     locations_router, pages_router,
 )
 from app.routers.photos import router as photos_router
 from app.routers.export import router as export_router
+from app.routers.backup import router as backup_router
+from app.services.bootstrap import seed_admin
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    seed_admin()
     yield
 
 
@@ -41,9 +44,11 @@ app.mount("/uploads/locations", StaticFiles(directory=LOCATION_PHOTO_DIR), name=
 
 app.include_router(pages_router)
 app.include_router(auth_router)
+app.include_router(users_router)
 app.include_router(items_router)
 app.include_router(boxes_router)
 app.include_router(categories_router)
 app.include_router(locations_router)
 app.include_router(photos_router)
 app.include_router(export_router)
+app.include_router(backup_router)

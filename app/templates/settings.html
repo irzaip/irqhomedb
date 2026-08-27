@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block heading %}⚙️ Settings{% endblock %}
+{% block content %}
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem;">👤 My Account</h2>
+    <label style="font-size:0.85rem;color:#94a3b8;">Username</label>
+    <input value="{{ user.username }}" disabled>
+    <label style="font-size:0.85rem;color:#94a3b8;margin-top:0.75rem;">Nama Tampilan</label>
+    <input id="myDisplayName" value="{{ user.display_name or user.username }}">
+    <button onclick="saveDisplayName()" style="margin-top:0.75rem;">💾 Simpan Nama</button>
+
+    <hr style="border-color:#334155;margin:1.25rem 0;">
+    <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">🔑 Ganti Password</h2>
+    <div style="max-width:420px;">
+        <label style="font-size:0.85rem;color:#94a3b8;">Password Lama</label>
+        <input type="password" id="curPw">
+        <label style="font-size:0.85rem;color:#94a3b8;margin-top:0.75rem;">Password Baru</label>
+        <input type="password" id="newPw">
+        <label style="font-size:0.85rem;color:#94a3b8;margin-top:0.75rem;">Ulangi Password Baru</label>
+        <input type="password" id="newPw2">
+        <button onclick="changeMyPassword()" style="margin-top:0.75rem;">🔄 Ganti Password</button>
+    </div>
+</div>
+
+{% if user.is_admin %}
+<div class="card">
+    <h2 style="font-size:1.1rem;margin-bottom:0.5rem;">👥 Users</h2>
+    <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:1rem;">Buat akun baru, reset password, atau aktif/nonaktifkan akses asisten.</p>
+
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;"><label style="font-size:0.85rem;color:#94a3b8;">Username</label>
+            <input id="nuUsername"></div>
+        <div style="flex:1;min-width:140px;"><label style="font-size:0.85rem;color:#94a3b8;">Password</label>
+            <input id="nuPass" type="password"></div>
+        <div style="flex:1;min-width:140px;"><label style="font-size:0.85rem;color:#94a3b8;">Nama Tampilan</label>
+            <input id="nuDisplay"></div>
+        <button onclick="addUser()">+ Tambah</button>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr style="text-align:left;color:#94a3b8;font-size:0.8rem;">
+                <th style="padding:0.5rem;border-bottom:1px solid #334155;">User</th>
+                <th style="padding:0.5rem;border-bottom:1px solid #334155;">Status</th>
+                <th style="padding:0.5rem;border-bottom:1px solid #334155;">Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="userList"></tbody>
+    </table>
+</div>
+{% endif %}
+
+<script>
+var IS_ADMIN = {{ 'true' if user.is_admin else 'false' }};
+var MY_ID = {{ user.id }};
+function msg(t) { alert(t); }
+
+// ---------- My Account ----------
+function saveDisplayName() {
+    var name = document.getElementById('myDisplayName').value;
+    var body = new URLSearchParams();
+    body.append('display_name', name);
+    fetch('/api/auth/me', { method: 'PATCH', body: body })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (d.success) msg('Nama disimpan.'); else msg(d.detail || 'Gagal'); });
+}
+
+function changeMyPassword() {
+    var cur = document.getElementById('curPw').value;
+    var n1 = document.getElementById('newPw').value;
+    var n2 = document.getElementById('newPw2').value;
+    if (!cur || !n1) { msg('Isi password lama dan baru.'); return; }
+    if (n1 !== n2) { msg('Password baru tidak cocok.'); return; }
+    fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: cur, new_password: n1 })
+    }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.success) { msg('Password berhasil diubah.'); }
+        else { msg(d.detail || 'Gagal'); }
+    });
+}
+
+// ---------- Admin: Users ----------
+function loadUsers() {
+    if (!IS_ADMIN) return;
+    fetch('/api/users').then(function(r){ return r.json(); }).then(function(d){
+        var tb = document.getElementById('userList');
+        if (!d.success || !d.data.length) { tb.innerHTML = '<tr><td colspan="3" style="padding:0.75rem;color:#94a3b8;">Belum ada user.</td></tr>'; return; }
+        tb.innerHTML = d.data.map(function(u){
+            var statusColor = u.is_active ? '#34d399' : '#ef4444';
+            var statusText = u.is_active ? 'Aktif' : 'Nonaktif';
+            var isMe = u.id === MY_ID;
+            var toggle = isMe
+                ? '<span style="color:#475569;font-size:0.8rem;">(ini kamu)</span>'
+                : '<button onclick="toggleUser(' + u.id + ',' + (!u.is_active) + ')">' + (u.is_active ? 'Nonaktifkan' : 'Aktifkan') + '</button>';
+            var reset = isMe
+                ? ' <span style="color:#475569;font-size:0.8rem;">(ganti sendiri)</span>'
+                : ' <button onclick="resetPw(' + u.id + ')" style="background:#475569;">Reset</button>';
+            var del = isMe
+                ? ''
+                : ' <button onclick="delUser(' + u.id + ')" style="background:#dc2626;">Hapus</button>';
+            return '<tr>' +
+                '<td style="padding:0.5rem;border-bottom:1px solid #334155;">' + esc(u.username) + (u.is_admin ? ' 👑' : '') +
+                    '<div style="font-size:0.8rem;color:#94a3b8;">' + esc(u.display_name || '') + '</div></td>' +
+                '<td style="padding:0.5rem;border-bottom:1px solid #334155;color:' + statusColor + ';">' + statusText + '</td>' +
+                '<td style="padding:0.5rem;border-bottom:1px solid #334155;">' + toggle + ' ' + reset + ' ' + del + '</td>' +
+                '</tr>';
+        }).join('');
+    });
+}
+
+function addUser() {
+    var u = document.getElementById('nuUsername').value.trim();
+    var p = document.getElementById('nuPass').value;
+    if (!u || !p) { msg('Isi username dan password.'); return; }
+    fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p, display_name: document.getElementById('nuDisplay').value.trim() })
+    }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.success) { msg('User ' + u + ' dibuat.'); document.getElementById('nuUsername').value=''; document.getElementById('nuPass').value=''; document.getElementById('nuDisplay').value=''; loadUsers(); }
+        else { msg(d.detail || 'Gagal'); }
+    });
+}
+
+function toggleUser(id, activate) {
+    var body = new URLSearchParams();
+    body.append('is_active', activate ? 'true' : 'false');
+    fetch('/api/users/' + id, { method: 'PATCH', body: body })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (d.success) loadUsers(); else msg(d.detail || 'Gagal'); });
+}
+
+function resetPw(id) {
+    var p = prompt('Password baru untuk user ini:');
+    if (!p) return;
+    var body = new URLSearchParams();
+    body.append('new_password', p);
+    fetch('/api/users/' + id + '/reset-password', { method: 'POST', body: body })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (d.success) msg(d.data.message || 'Reset OK'); else msg(d.detail || 'Gagal'); });
+}
+
+function delUser(id) {
+    if (!confirm('Hapus user ini? Item/box tidak terpengaruh.')) return;
+    fetch('/api/users/' + id, { method: 'DELETE' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (d.success) loadUsers(); else msg(d.detail || 'Gagal'); });
+}
+
+loadUsers();
+</script>
+{% endblock %}

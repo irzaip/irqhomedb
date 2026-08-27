@@ -118,6 +118,16 @@ def categories_page(request: Request, user=Depends(require_user)):
     return render_template("categories/manage.html", request, user=user)
 
 
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request, user=Depends(require_user)):
+    return render_template("settings.html", request, user=user)
+
+
+@router.get("/backup", response_class=HTMLResponse)
+def backup_page(request: Request, user=Depends(require_user)):
+    return render_template("backup.html", request, user=user)
+
+
 @router.get("/locations", response_class=HTMLResponse)
 def locations_page(request: Request, user=Depends(require_user)):
     return render_template("locations/manage.html", request, user=user)
